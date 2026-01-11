@@ -1,12 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Client Supabase externe pour les données géospatiales
-const supabaseUrl = import.meta.env.VITE_EXTERNAL_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_EXTERNAL_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase external credentials');
-}
+// Client Supabase externe pour les données géospatiales (PostGIS)
+// Note: anon key is a publishable key, safe to include in client code
+const supabaseUrl = 'https://anujltoavoafclklucdx.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFudWpsdG9hdm9hZmNsa2x1Y2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMzIyNTQsImV4cCI6MjA4MzcwODI1NH0.eRjOECx2G5_MrL2KvXWw4vRDnP-JEOYm_70VXkPf5AU';
 
 export const supabaseGeo = createClient(supabaseUrl, supabaseAnonKey);
 

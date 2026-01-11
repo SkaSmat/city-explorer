@@ -14,8 +14,9 @@ export default function MapView() {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   
-  const [cityName, setCityName] = useState("Paris");
+  const [cityName, setCityName] = useState("Détection...");
   const [userId, setUserId] = useState<string | null>(null);
+  const [detectedCity, setDetectedCity] = useState<string>("");
   
   // GPS Tracker state
   const [isTracking, setIsTracking] = useState(false);
@@ -98,6 +99,33 @@ export default function MapView() {
     return () => clearInterval(interval);
   }, [isTracking]);
 
+  // Detect city using reverse geocoding
+  const detectCity = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+        {
+          headers: {
+            'User-Agent': 'StreetExplorer/1.0'
+          }
+        }
+      );
+      const data = await response.json();
+      
+      const city = data.address?.city || 
+                   data.address?.town || 
+                   data.address?.village || 
+                   data.address?.municipality ||
+                   'Unknown City';
+      
+      console.log('📍 Detected city:', city);
+      return city;
+    } catch (error) {
+      console.error('Failed to detect city:', error);
+      return 'Unknown City';
+    }
+  };
+
   // Start tracking
   const handleStartTracking = async () => {
     if (!userId) {
@@ -109,7 +137,33 @@ export default function MapView() {
       setIsLoading(true);
       setError(null);
       
-      await gpsTracker.startTracking(userId, cityName);
+      // Get current position and detect city
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      });
+      
+      const currentCity = await detectCity(
+        position.coords.latitude,
+        position.coords.longitude
+      );
+      
+      setCityName(currentCity);
+      setDetectedCity(currentCity);
+      
+      // Center map on current position
+      if (mapRef.current) {
+        mapRef.current.flyTo({
+          center: [position.coords.longitude, position.coords.latitude],
+          zoom: 16,
+          duration: 1000
+        });
+      }
+      
+      await gpsTracker.startTracking(userId, currentCity);
       
       setIsTracking(true);
       setIsLoading(false);

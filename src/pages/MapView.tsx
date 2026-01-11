@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Navigation, Pause, MapPin, Route } from "lucide-react";
+import { ArrowLeft, Navigation, Pause, MapPin, Route, Clock, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { useGeolocation } from "@/hooks/useGeolocation";
 import { supabase } from "@/integrations/supabase/client";
+import { gpsTracker } from "@/services/GPSTracker";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -14,18 +14,26 @@ export default function MapView() {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   
-  const [todayStats, setTodayStats] = useState({ distance: 0, streets: 0 });
   const [cityName, setCityName] = useState("Paris");
+  const [userId, setUserId] = useState<string | null>(null);
   
-  const { position, isTracking, track, startTracking, stopTracking, error } = useGeolocation({
-    minInterval: 15000, // 15 seconds
+  // GPS Tracker state
+  const [isTracking, setIsTracking] = useState(false);
+  const [trackingStats, setTrackingStats] = useState({
+    distance: 0,
+    duration: 0,
+    streetsExplored: 0
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Check auth
+  // Check auth and get user ID
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/login");
+      } else {
+        setUserId(session.user.id);
       }
     });
   }, [navigate]);
@@ -72,94 +80,80 @@ export default function MapView() {
     };
   }, []);
 
-  // Update marker position
+  // Update stats every second during tracking
   useEffect(() => {
-    if (!mapRef.current || !position) return;
+    if (!isTracking) return;
+    
+    const interval = setInterval(() => {
+      const state = gpsTracker.getCurrentState();
+      if (state) {
+        setTrackingStats({
+          distance: Math.round(state.distance),
+          duration: Math.round(state.duration / 1000),
+          streetsExplored: state.streetsExplored
+        });
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [isTracking]);
 
-    const { longitude, latitude } = position;
-
-    if (!markerRef.current) {
-      // Create custom marker element
-      const el = document.createElement("div");
-      el.className = "w-6 h-6 bg-primary rounded-full border-4 border-white shadow-lg";
-
-      markerRef.current = new maplibregl.Marker({ element: el })
-        .setLngLat([longitude, latitude])
-        .addTo(mapRef.current);
-    } else {
-      markerRef.current.setLngLat([longitude, latitude]);
+  // Start tracking
+  const handleStartTracking = async () => {
+    if (!userId) {
+      setError("Vous devez être connecté");
+      return;
     }
-
-    // Center map on position
-    mapRef.current.flyTo({
-      center: [longitude, latitude],
-      zoom: 16,
-      duration: 1000,
-    });
-  }, [position]);
-
-  // Draw track line
-  useEffect(() => {
-    if (!mapRef.current || track.length < 2) return;
-
-    const coordinates = track.map((p) => [p.longitude, p.latitude]);
-
-    if (mapRef.current.getSource("track")) {
-      (mapRef.current.getSource("track") as maplibregl.GeoJSONSource).setData({
-        type: "Feature",
-        properties: {},
-        geometry: {
-          type: "LineString",
-          coordinates,
-        },
-      });
-    } else {
-      mapRef.current.addSource("track", {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "LineString",
-            coordinates,
-          },
-        },
-      });
-
-      mapRef.current.addLayer({
-        id: "track",
-        type: "line",
-        source: "track",
-        layout: {
-          "line-join": "round",
-          "line-cap": "round",
-        },
-        paint: {
-          "line-color": "#6366F1",
-          "line-width": 4,
-        },
-      });
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      await gpsTracker.startTracking(userId, cityName);
+      
+      setIsTracking(true);
+      setIsLoading(false);
+    } catch (err: any) {
+      setError(err.message);
+      setIsLoading(false);
     }
+  };
 
-    // Calculate distance
-    let totalDistance = 0;
-    for (let i = 1; i < track.length; i++) {
-      totalDistance += calculateDistance(
-        track[i - 1].latitude,
-        track[i - 1].longitude,
-        track[i].latitude,
-        track[i].longitude
-      );
+  // Stop tracking
+  const handleStopTracking = async () => {
+    try {
+      setIsLoading(true);
+      
+      const result = await gpsTracker.stopTracking();
+      
+      setIsTracking(false);
+      setIsLoading(false);
+      
+      // Show success message
+      alert(`Exploration terminée!\n${Math.round(result.distance)}m parcourus\n${result.newStreets} rues découvertes`);
+      
+      // Reset stats
+      setTrackingStats({ distance: 0, duration: 0, streetsExplored: 0 });
+      
+    } catch (err: any) {
+      setError(err.message);
+      setIsLoading(false);
     }
-    setTodayStats((prev) => ({ ...prev, distance: totalDistance }));
-  }, [track]);
+  };
 
   const handleToggleTracking = () => {
     if (isTracking) {
-      stopTracking();
+      handleStopTracking();
     } else {
-      startTracking();
+      handleStartTracking();
     }
+  };
+
+  // Format duration
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -178,10 +172,10 @@ export default function MapView() {
             <h1 className="font-semibold">{cityName}</h1>
             <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
               <Route className="w-4 h-4" />
-              {todayStats.distance.toFixed(2)} km
+              {(trackingStats.distance / 1000).toFixed(2)} km
               <span className="text-muted-foreground/50">•</span>
               <MapPin className="w-4 h-4" />
-              {todayStats.streets} streets today
+              {trackingStats.streetsExplored} rues
             </p>
           </div>
           <div className="w-10" /> {/* Spacer */}
@@ -194,20 +188,50 @@ export default function MapView() {
       {/* Error Message */}
       {error && (
         <div className="absolute top-20 left-4 right-4 z-10 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl p-4">
-          <p className="text-sm font-medium">
-            {error.code === 1
-              ? "Veuillez autoriser la géolocalisation"
-              : error.code === 2
-              ? "Position non disponible"
-              : "Timeout de géolocalisation"}
-          </p>
+          <p className="text-sm font-medium">{error}</p>
         </div>
       )}
 
-      {/* Start Tracking Button */}
+      {/* Tracking Stats Panel */}
+      {isTracking && (
+        <div className="absolute top-24 left-4 right-4 z-10 bg-card/95 backdrop-blur-sm border border-border rounded-xl p-4">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                <Route className="w-3 h-3" />
+                Distance
+              </p>
+              <p className="text-lg font-bold text-primary">
+                {(trackingStats.distance / 1000).toFixed(2)} km
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                <Clock className="w-3 h-3" />
+                Durée
+              </p>
+              <p className="text-lg font-bold text-primary">
+                {formatDuration(trackingStats.duration)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                <Map className="w-3 h-3" />
+                Rues
+              </p>
+              <p className="text-lg font-bold text-primary">
+                {trackingStats.streetsExplored}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start/Stop Tracking Button */}
       <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-10">
         <Button
           onClick={handleToggleTracking}
+          disabled={isLoading}
           className={`w-32 h-32 rounded-full text-lg font-bold shadow-2xl transition-all duration-300 ${
             isTracking
               ? "bg-destructive hover:bg-destructive/90"
@@ -215,7 +239,9 @@ export default function MapView() {
           }`}
         >
           <div className="flex flex-col items-center gap-2">
-            {isTracking ? (
+            {isLoading ? (
+              <span className="text-sm">Loading...</span>
+            ) : isTracking ? (
               <>
                 <Pause className="w-8 h-8" />
                 <span className="text-xs">STOP</span>
@@ -234,28 +260,4 @@ export default function MapView() {
       <BottomNav />
     </div>
   );
-}
-
-// Haversine formula to calculate distance between two points
-function calculateDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371; // Earth's radius in km
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function toRad(deg: number): number {
-  return deg * (Math.PI / 180);
 }

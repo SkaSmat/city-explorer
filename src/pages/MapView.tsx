@@ -4,8 +4,10 @@ import { ArrowLeft, Navigation, Pause, MapPin, Route, Clock, Map } from "lucide-
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseGeo } from "@/lib/supabaseGeo";
 import { gpsTracker } from "@/services/GPSTracker";
 import { ensureUserInGeo } from "@/lib/supabaseGeo";
+import { explorationEvents } from "@/hooks/useExplorationRefresh";
 import { toast } from "sonner";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -77,11 +79,49 @@ export default function MapView() {
 
     mapRef.current.addControl(new maplibregl.NavigationControl(), "top-right");
 
+    // Load previously explored streets when map is ready
+    mapRef.current.on('load', async () => {
+      if (userId) {
+        await loadExploredStreets();
+      }
+    });
+
     return () => {
       mapRef.current?.remove();
       mapRef.current = null;
     };
   }, []);
+
+  // Load explored streets from database
+  const loadExploredStreets = async () => {
+    if (!userId || !mapRef.current) return;
+
+    try {
+      // Get user's explored streets
+      const { data: exploredData, error } = await supabaseGeo
+        .from('explored_streets')
+        .select('street_osm_id, city')
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error loading explored streets:', error);
+        return;
+      }
+
+      if (!exploredData || exploredData.length === 0) {
+        console.log('No previously explored streets found');
+        return;
+      }
+
+      console.log(`📍 Found ${exploredData.length} previously explored streets`);
+      
+      // Note: To fully display explored streets, we'd need to fetch their geometries
+      // from Overpass or store them. For now, this sets up the foundation.
+      
+    } catch (err) {
+      console.error('Failed to load explored streets:', err);
+    }
+  };
 
   // Update stats and position every second during tracking
   useEffect(() => {
@@ -217,21 +257,8 @@ export default function MapView() {
         markerRef.current.remove();
         markerRef.current = null;
       }
-      // Remove GPS track and streets layers when tracking stops
-      if (mapRef.current) {
-        if (mapRef.current.getLayer('gps-track-layer')) {
-          mapRef.current.removeLayer('gps-track-layer');
-        }
-        if (mapRef.current.getSource('gps-track')) {
-          mapRef.current.removeSource('gps-track');
-        }
-        if (mapRef.current.getLayer('streets-layer')) {
-          mapRef.current.removeLayer('streets-layer');
-        }
-        if (mapRef.current.getSource('streets')) {
-          mapRef.current.removeSource('streets');
-        }
-      }
+      // Keep GPS track layer visible after tracking (but remove source to allow re-add)
+      // We DON'T remove the streets layer to keep explored streets visible!
     };
   }, [isTracking]);
 
@@ -335,19 +362,20 @@ export default function MapView() {
       setIsTracking(false);
       setIsLoading(false);
 
+      // Trigger refresh for Home page data
+      explorationEvents.trigger();
+
       // Show success toast
       toast.success('🎉 Exploration terminée!', {
         description: `${Math.round(result.distance)}m parcourus • ${result.newStreets} rues découvertes`,
         duration: 5000,
         action: {
-          label: 'Voir la carte',
-          onClick: () => {
-            // Map already visible, could scroll to top or reset view
-          }
+          label: 'Voir stats',
+          onClick: () => navigate('/home')
         }
       });
 
-      // Reset stats
+      // Reset stats but keep map layers visible
       setTrackingStats({ distance: 0, duration: 0, streetsExplored: 0 });
       
     } catch (err: any) {

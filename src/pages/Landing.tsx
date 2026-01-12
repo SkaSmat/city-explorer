@@ -1,6 +1,7 @@
 import { ArrowRight, MapPin, Map, Trophy, Twitter, Github, Instagram } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const features = [
   {
@@ -117,9 +118,9 @@ export default function Landing() {
               <span className="font-semibold text-lg">StreetExplorer</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <Link to="/about" className="hover:text-foreground transition-colors">About</Link>
-              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-              <Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link>
+              <button onClick={() => toast.info("Page About bientôt disponible")} className="hover:text-foreground transition-colors">About</button>
+              <button onClick={() => toast.info("Page Privacy bientôt disponible")} className="hover:text-foreground transition-colors">Privacy</button>
+              <button onClick={() => toast.info("Page Contact bientôt disponible")} className="hover:text-foreground transition-colors">Contact</button>
             </div>
             <div className="flex items-center gap-4">
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Twitter">

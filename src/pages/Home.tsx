@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { MapPin, Route, Building2, Flame, Plus, ChevronRight, Bell, Loader2 } from "lucide-react";
+import { MapPin, Route, Building2, Flame, Plus, ChevronRight, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseGeo } from "@/lib/supabaseGeo";
 import { User } from "@supabase/supabase-js";
+import { SkeletonStat, SkeletonCityCard } from "@/components/ui/skeleton";
 
 interface UserStats {
   totalDistance: number;
@@ -190,9 +191,9 @@ export default function Home() {
     <AppLayout>
       <div className="px-6 py-8">
         {/* Header */}
-        <header className="flex items-center justify-between mb-8">
+        <header className="flex items-center justify-between mb-8 animate-fade-in">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-lg">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-lg animate-gradient shadow-md">
               {username.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -200,7 +201,7 @@ export default function Home() {
               <h1 className="text-xl font-bold">{username}</h1>
             </div>
           </div>
-          <button className="relative p-2 rounded-full hover:bg-muted transition-colors" aria-label="Notifications">
+          <button className="relative p-2 rounded-full hover:bg-muted transition-all hover:scale-110" aria-label="Notifications">
             <Bell className="w-6 h-6 text-muted-foreground" />
             {/* Hide notification dot for now - can be enabled later */}
           </button>
@@ -209,12 +210,13 @@ export default function Home() {
         {/* Stats Grid */}
         <section className="mb-10">
           <div className="grid grid-cols-2 gap-4">
-            {displayStats.map((stat) => (
+            {displayStats.map((stat, index) => (
               <div
                 key={stat.label}
-                className="bg-card rounded-2xl border border-border p-4 card-hover"
+                className={`bg-card rounded-2xl border border-border p-4 card-hover animate-fade-in stagger-delay-${index + 1}`}
+                style={{ animationFillMode: 'both' }}
               >
-                <stat.icon className={`w-6 h-6 ${stat.color} mb-2`} />
+                <stat.icon className={`w-6 h-6 ${stat.color} mb-2 transition-transform hover:scale-110`} />
                 <p className="text-2xl font-bold">{stat.value}</p>
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
               </div>
@@ -235,8 +237,10 @@ export default function Home() {
           </div>
 
           {loadingData ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <SkeletonCityCard key={i} />
+              ))}
             </div>
           ) : (
             <div className="space-y-4">
@@ -251,7 +255,7 @@ export default function Home() {
                   </p>
                 </div>
               ) : (
-                cities.slice(0, 3).map((city) => {
+                cities.slice(0, 3).map((city, index) => {
                   // Detect country flag from city name
                   const getFlag = (cityName: string) => {
                     // Simple mapping - can be extended
@@ -265,7 +269,8 @@ export default function Home() {
                     <Link
                       key={city.city}
                       to="/map"
-                      className="block bg-card rounded-2xl border border-border p-4 card-hover"
+                      className={`block bg-card rounded-2xl border border-border p-4 card-hover animate-fade-in stagger-delay-${index + 1}`}
+                      style={{ animationFillMode: 'both' }}
                     >
                       <div className="flex items-start gap-4">
                         {/* Mini map placeholder with random pattern based on city name */}

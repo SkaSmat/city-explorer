@@ -12,7 +12,6 @@ import {
   Flame,
   Calendar,
   Award,
-  Loader2,
   Lock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { supabaseGeo } from "@/lib/supabaseGeo";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
+import { SkeletonStat, SkeletonBadge } from "@/components/ui/skeleton";
+import { retryQuery } from "@/lib/retryQuery";
 
 interface UserStats {
   totalDistance: number;
@@ -91,15 +92,24 @@ export default function Profile() {
       try {
         setLoadingData(true);
 
-        // Fetch user profile stats
-        const { data: profile, error: profileError } = await supabaseGeo
-          .from('user_profiles')
-          .select('total_distance_meters, total_streets_explored, created_at')
-          .eq('id', user.id)
-          .single();
+        // Fetch user profile stats (with retry logic)
+        const { data: profile, error: profileError } = await retryQuery(
+          () => supabaseGeo
+            .from('user_profiles')
+            .select('total_distance_meters, total_streets_explored, created_at')
+            .eq('id', user.id)
+            .single(),
+          {
+            maxRetries: 3,
+            onRetry: (attempt) => {
+              toast.info(`Reconnexion... (tentative ${attempt}/3)`);
+            }
+          }
+        );
 
         if (profileError) {
           console.error('Error loading profile:', profileError);
+          toast.error('Erreur de chargement du profil');
         }
 
         // Fetch city count
@@ -253,13 +263,13 @@ export default function Profile() {
     <AppLayout>
       <div className="px-6 py-8">
         {/* Profile Header */}
-        <header className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-3xl">
+        <header className="text-center mb-8 animate-fade-in">
+          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-3xl animate-gradient shadow-lg">
             {username.charAt(0).toUpperCase()}
           </div>
           <h1 className="text-2xl font-bold mb-1">{username}</h1>
           <p className="text-muted-foreground text-sm mb-4">{email}</p>
-          <Button variant="outline" size="sm" className="rounded-xl">
+          <Button variant="outline" size="sm" className="rounded-xl transition-all hover:scale-105">
             Modifier le profil
           </Button>
         </header>
@@ -268,15 +278,18 @@ export default function Profile() {
         <section className="mb-10">
           <h2 className="text-lg font-semibold mb-4">Statistiques</h2>
           {loadingData ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="grid grid-cols-2 gap-3">
+              {[...Array(6)].map((_, i) => (
+                <SkeletonStat key={i} />
+              ))}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {displayStats.map((stat) => (
+              {displayStats.map((stat, index) => (
                 <div
                   key={stat.label}
-                  className="bg-card rounded-xl border border-border p-4"
+                  className={`bg-card rounded-xl border border-border p-4 card-hover animate-fade-in stagger-delay-${index + 1}`}
+                  style={{ animationFillMode: 'both' }}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <stat.icon className="w-4 h-4 text-primary" />
@@ -301,8 +314,10 @@ export default function Profile() {
             )}
           </div>
           {loadingData ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="grid grid-cols-3 gap-3">
+              {[...Array(9)].map((_, i) => (
+                <SkeletonBadge key={i} />
+              ))}
             </div>
           ) : badges.length === 0 ? (
             <div className="text-center py-12">
@@ -311,20 +326,21 @@ export default function Profile() {
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
-              {badges.slice(0, 9).map((badge) => (
+              {badges.slice(0, 9).map((badge, index) => (
                 <div
                   key={badge.id}
-                  className={`bg-card rounded-xl border border-border p-4 text-center transition-all ${
+                  className={`bg-card rounded-xl border border-border p-4 text-center transition-all animate-scale-in stagger-delay-${index + 1} ${
                     badge.unlocked ? "card-hover" : "opacity-50 grayscale"
                   }`}
                   title={badge.description}
+                  style={{ animationFillMode: 'both' }}
                 >
                   {!badge.unlocked && (
                     <div className="absolute top-2 right-2">
                       <Lock className="w-3 h-3 text-muted-foreground" />
                     </div>
                   )}
-                  <div className="text-3xl mb-2">{badge.icon}</div>
+                  <div className={`text-3xl mb-2 ${badge.unlocked ? 'animate-pulse-ring' : ''}`}>{badge.icon}</div>
                   <p className="text-xs font-medium truncate">{badge.name}</p>
                   {badge.unlocked && badge.unlockedAt && (
                     <p className="text-[10px] text-muted-foreground mt-1">

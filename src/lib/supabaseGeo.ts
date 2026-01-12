@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 // Client Supabase externe pour les données géospatiales (PostGIS)
 // Ces clés sont publiques (anon key) et peuvent être dans le code
 const SUPABASE_GEO_URL = 'https://anujltoavoafclklucdx.supabase.co';
-const SUPABASE_GEO_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFudWpsdG9hdm9hZmNsa2x1Y2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2NTg0NjIsImV4cCI6MjA2NTIzNDQ2Mn0.ELMOHJ45yeCRCYarTZafpA_FhdBIoi-SCX4CsGA9kGc';
+const SUPABASE_GEO_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFudWpsdG9hdm9hZmNsa2x1Y2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMzIyNTQsImV4cCI6MjA4MzcwODI1NH0.eRjOECx2G5_MrL2KvXWw4vRDnP-JEOYm_70VXkPf5AU';
 
 // Client principal pour les opérations géospatiales
 export const supabaseGeo = createClient(SUPABASE_GEO_URL, SUPABASE_GEO_ANON_KEY);

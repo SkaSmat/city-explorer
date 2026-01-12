@@ -269,7 +269,12 @@ export default function Profile() {
           </div>
           <h1 className="text-2xl font-bold mb-1">{username}</h1>
           <p className="text-muted-foreground text-sm mb-4">{email}</p>
-          <Button variant="outline" size="sm" className="rounded-xl transition-all hover:scale-105">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl transition-all hover:scale-105"
+            onClick={() => toast.info("🚧 Fonctionnalité en cours de développement")}
+          >
             Modifier le profil
           </Button>
         </header>
@@ -307,7 +312,12 @@ export default function Profile() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Vos Badges</h2>
             {badges.length > 6 && (
-              <Button variant="ghost" size="sm" className="text-primary">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-primary"
+                onClick={() => toast.info("🏆 Page complète des badges bientôt disponible !")}
+              >
                 Voir tout
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
@@ -360,6 +370,14 @@ export default function Profile() {
             {settingsItems.map((item, index) => (
               <button
                 key={item.label}
+                onClick={() => {
+                  const messages = {
+                    "Préférences": "⚙️ Page de préférences bientôt disponible !",
+                    "Confidentialité": "🔒 Paramètres de confidentialité bientôt disponibles !",
+                    "Aide": "❓ Centre d'aide bientôt disponible !"
+                  };
+                  toast.info(messages[item.label as keyof typeof messages]);
+                }}
                 className={`w-full flex items-center justify-between px-4 py-4 hover:bg-muted/50 transition-colors ${
                   index !== settingsItems.length - 1 ? "border-b border-border" : ""
                 }`}

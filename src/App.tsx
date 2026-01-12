@@ -11,6 +11,9 @@ import Home from "./pages/Home";
 import MapView from "./pages/MapView";
 import Profile from "./pages/Profile";
 import SelectCity from "./pages/SelectCity";
+import About from "./pages/About";
+import Privacy from "./pages/Privacy";
+import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 import { testSupabaseConnection } from './lib/testConnection';
 
@@ -34,6 +37,9 @@ const App = () => (
             <Route path="/map" element={<MapView />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/select-city" element={<SelectCity />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/contact" element={<Contact />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

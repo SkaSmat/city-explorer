@@ -1,6 +1,6 @@
 import { overpassService, type Street } from './OverpassService';
 import { streetMatcher, type GPSPoint } from './StreetMatcher';
-import { supabaseGeoAdmin } from '@/lib/supabaseGeo';
+import { supabaseGeo } from '@/lib/supabaseGeo';
 
 interface TrackingSession {
   sessionId: string;
@@ -212,7 +212,7 @@ class GPSTracker {
       const geometry = `SRID=4326;LINESTRING(${coordsWKT})`;
 
       // Insérer le track
-      const { data: track, error: trackError } = await supabaseGeoAdmin
+      const { data: track, error: trackError } = await supabaseGeo
         .from('gps_tracks')
         .insert({
           user_id: this.session.userId,
@@ -234,7 +234,7 @@ class GPSTracker {
       const exploredIds = Array.from(this.session.exploredStreetIds);
       
       if (exploredIds.length > 0) {
-        const { data, error } = await supabaseGeoAdmin.rpc('calculate_explored_streets_v2', {
+        const { data, error } = await supabaseGeo.rpc('calculate_explored_streets_v2', {
           p_track_id: track.id,
           p_user_id: this.session.userId,
           p_explored_osm_ids: exploredIds,

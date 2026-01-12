@@ -1,41 +1,44 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Settings, 
-  HelpCircle, 
-  Shield, 
-  LogOut, 
+import {
+  Settings,
+  HelpCircle,
+  Shield,
+  LogOut,
   ChevronRight,
   Route,
   MapPin,
   Building2,
   Flame,
   Calendar,
-  Award
+  Award,
+  Loader2,
+  Lock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseGeo } from "@/lib/supabaseGeo";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
-const mockStats = [
-  { icon: Route, label: "Distance totale", value: "127.3 km" },
-  { icon: MapPin, label: "Rues explorées", value: "1,847" },
-  { icon: Building2, label: "Villes visitées", value: "8" },
-  { icon: Flame, label: "Streak actuel", value: "12 jours" },
-  { icon: Calendar, label: "Membre depuis", value: "Mars 2024" },
-  { icon: Award, label: "Badges obtenus", value: "14" },
-];
+interface UserStats {
+  totalDistance: number;
+  totalStreets: number;
+  totalCities: number;
+  currentStreak: number;
+  memberSince: string;
+  badgesUnlocked: number;
+}
 
-const mockBadges = [
-  { id: 1, name: "First Steps", icon: "🚶", unlocked: true, date: "15 mars 2024" },
-  { id: 2, name: "10 km Walker", icon: "🏃", unlocked: true, date: "22 mars 2024" },
-  { id: 3, name: "Night Owl", icon: "🦉", unlocked: true, date: "5 avril 2024" },
-  { id: 4, name: "Early Bird", icon: "🐦", unlocked: true, date: "12 avril 2024" },
-  { id: 5, name: "City Master", icon: "🏙️", unlocked: false, date: null },
-  { id: 6, name: "Marathon", icon: "🏅", unlocked: false, date: null },
-];
+interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  unlockedAt: string | null;
+}
 
 const settingsItems = [
   { icon: Settings, label: "Préférences", href: "#preferences" },
@@ -47,6 +50,16 @@ export default function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingData, setLoadingData] = useState(true);
+  const [stats, setStats] = useState<UserStats>({
+    totalDistance: 0,
+    totalStreets: 0,
+    totalCities: 0,
+    currentStreak: 0,
+    memberSince: '',
+    badgesUnlocked: 0,
+  });
+  const [badges, setBadges] = useState<Badge[]>([]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -70,6 +83,119 @@ export default function Profile() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Load user stats and badges
+  useEffect(() => {
+    if (!user) return;
+
+    const loadUserData = async () => {
+      try {
+        setLoadingData(true);
+
+        // Fetch user profile stats
+        const { data: profile, error: profileError } = await supabaseGeo
+          .from('user_profiles')
+          .select('total_distance_meters, total_streets_explored, created_at')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error loading profile:', profileError);
+        }
+
+        // Fetch city count
+        const { data: cities, error: citiesError } = await supabaseGeo
+          .from('city_progress')
+          .select('city')
+          .eq('user_id', user.id);
+
+        if (citiesError) {
+          console.error('Error loading cities:', citiesError);
+        }
+
+        // Calculate streak
+        const { data: tracks, error: tracksError } = await supabaseGeo
+          .from('gps_tracks')
+          .select('started_at')
+          .eq('user_id', user.id)
+          .order('started_at', { ascending: false });
+
+        let streak = 0;
+        if (tracks && tracks.length > 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const uniqueDays = new Set(
+            tracks.map(t => new Date(t.started_at).toISOString().split('T')[0])
+          );
+
+          const sortedDays = Array.from(uniqueDays).sort().reverse();
+
+          let currentDate = new Date(today);
+          for (const day of sortedDays) {
+            const trackDate = new Date(day);
+            const diffDays = Math.floor((currentDate.getTime() - trackDate.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (diffDays === streak || diffDays === streak + 1) {
+              streak++;
+            } else {
+              break;
+            }
+          }
+        }
+
+        // Fetch badges
+        const { data: allBadges, error: badgesError } = await supabaseGeo
+          .from('badges')
+          .select('*');
+
+        if (badgesError) {
+          console.error('Error loading badges:', badgesError);
+        }
+
+        // Fetch unlocked badges
+        const { data: unlockedBadges, error: unlockedError } = await supabaseGeo
+          .from('user_badges')
+          .select('badge_id, unlocked_at')
+          .eq('user_id', user.id);
+
+        if (unlockedError) {
+          console.error('Error loading unlocked badges:', unlockedError);
+        }
+
+        const unlockedMap = new Map(
+          (unlockedBadges || []).map(ub => [ub.badge_id, ub.unlocked_at])
+        );
+
+        const badgesWithStatus: Badge[] = (allBadges || []).map(badge => ({
+          id: badge.id,
+          name: badge.name,
+          description: badge.description || '',
+          icon: badge.icon || '🏆',
+          unlocked: unlockedMap.has(badge.id),
+          unlockedAt: unlockedMap.get(badge.id) || null,
+        }));
+
+        // Update stats
+        setStats({
+          totalDistance: profile?.total_distance_meters || 0,
+          totalStreets: profile?.total_streets_explored || 0,
+          totalCities: cities?.length || 0,
+          currentStreak: streak,
+          memberSince: profile?.created_at || user.created_at,
+          badgesUnlocked: unlockedMap.size,
+        });
+
+        setBadges(badgesWithStatus);
+        setLoadingData(false);
+      } catch (err) {
+        console.error('Error loading user data:', err);
+        setLoadingData(false);
+      }
+    };
+
+    loadUserData();
+  }, [user]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Déconnexion réussie");
@@ -89,6 +215,40 @@ export default function Profile() {
   const username = user?.user_metadata?.username || user?.email?.split("@")[0] || "Explorer";
   const email = user?.email || "";
 
+  // Format stats for display
+  const displayStats = [
+    {
+      icon: Route,
+      label: "Distance totale",
+      value: loadingData ? "..." : `${(stats.totalDistance / 1000).toFixed(1)} km`
+    },
+    {
+      icon: MapPin,
+      label: "Rues explorées",
+      value: loadingData ? "..." : stats.totalStreets.toLocaleString()
+    },
+    {
+      icon: Building2,
+      label: "Villes visitées",
+      value: loadingData ? "..." : stats.totalCities.toString()
+    },
+    {
+      icon: Flame,
+      label: "Streak actuel",
+      value: loadingData ? "..." : `${stats.currentStreak} jour${stats.currentStreak > 1 ? 's' : ''}`
+    },
+    {
+      icon: Calendar,
+      label: "Membre depuis",
+      value: loadingData ? "..." : new Date(stats.memberSince).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    },
+    {
+      icon: Award,
+      label: "Badges obtenus",
+      value: loadingData ? "..." : `${stats.badgesUnlocked} / ${badges.length}`
+    },
+  ];
+
   return (
     <AppLayout>
       <div className="px-6 py-8">
@@ -107,49 +267,74 @@ export default function Profile() {
         {/* Stats Grid */}
         <section className="mb-10">
           <h2 className="text-lg font-semibold mb-4">Statistiques</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {mockStats.map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-card rounded-xl border border-border p-4"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <stat.icon className="w-4 h-4 text-primary" />
-                  <span className="text-xs text-muted-foreground">{stat.label}</span>
+          {loadingData ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {displayStats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="bg-card rounded-xl border border-border p-4"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <stat.icon className="w-4 h-4 text-primary" />
+                    <span className="text-xs text-muted-foreground">{stat.label}</span>
+                  </div>
+                  <p className="text-lg font-bold">{stat.value}</p>
                 </div>
-                <p className="text-lg font-bold">{stat.value}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Badges Section */}
         <section className="mb-10">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Your Badges</h2>
-            <Button variant="ghost" size="sm" className="text-primary">
-              See all
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+            <h2 className="text-lg font-semibold">Vos Badges</h2>
+            {badges.length > 6 && (
+              <Button variant="ghost" size="sm" className="text-primary">
+                Voir tout
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {mockBadges.map((badge) => (
-              <div
-                key={badge.id}
-                className={`bg-card rounded-xl border border-border p-4 text-center transition-all ${
-                  badge.unlocked ? "card-hover" : "opacity-50 grayscale"
-                }`}
-              >
-                <div className="text-3xl mb-2">{badge.icon}</div>
-                <p className="text-xs font-medium truncate">{badge.name}</p>
-                {badge.unlocked && badge.date && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {badge.date}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
+          {loadingData ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : badges.length === 0 ? (
+            <div className="text-center py-12">
+              <Award className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <p className="text-muted-foreground">Aucun badge disponible pour le moment</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {badges.slice(0, 9).map((badge) => (
+                <div
+                  key={badge.id}
+                  className={`bg-card rounded-xl border border-border p-4 text-center transition-all ${
+                    badge.unlocked ? "card-hover" : "opacity-50 grayscale"
+                  }`}
+                  title={badge.description}
+                >
+                  {!badge.unlocked && (
+                    <div className="absolute top-2 right-2">
+                      <Lock className="w-3 h-3 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="text-3xl mb-2">{badge.icon}</div>
+                  <p className="text-xs font-medium truncate">{badge.name}</p>
+                  {badge.unlocked && badge.unlockedAt && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {new Date(badge.unlockedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Settings Section */}

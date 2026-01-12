@@ -6,6 +6,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { gpsTracker } from "@/services/GPSTracker";
 import { ensureUserInGeo } from "@/lib/supabaseGeo";
+import { toast } from "sonner";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -116,6 +117,46 @@ export default function MapView() {
           mapRef.current.panTo([lng, lat], { duration: 500 });
         }
 
+        // Update GPS track line (blue trail)
+        if (state.gpsPoints && state.gpsPoints.length >= 2 && mapRef.current) {
+          const map = mapRef.current;
+
+          // Convert GPS points to GeoJSON LineString
+          const trackGeoJSON: GeoJSON.FeatureCollection = {
+            type: 'FeatureCollection',
+            features: [{
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: state.gpsPoints.map(p => [p.lng, p.lat])
+              }
+            }]
+          };
+
+          // Add or update GPS track source
+          if (map.getSource('gps-track')) {
+            (map.getSource('gps-track') as maplibregl.GeoJSONSource).setData(trackGeoJSON);
+          } else {
+            map.addSource('gps-track', {
+              type: 'geojson',
+              data: trackGeoJSON
+            });
+
+            // Add GPS track layer
+            map.addLayer({
+              id: 'gps-track-layer',
+              type: 'line',
+              source: 'gps-track',
+              paint: {
+                'line-color': '#3B82F6', // Blue
+                'line-width': 4,
+                'line-opacity': 0.7
+              }
+            }, 'streets-layer'); // Add above streets but below marker
+          }
+        }
+
         // Update streets layer with explored streets
         if (state.streets && state.exploredStreetIds && mapRef.current) {
           const map = mapRef.current;
@@ -176,8 +217,14 @@ export default function MapView() {
         markerRef.current.remove();
         markerRef.current = null;
       }
-      // Remove streets layer when tracking stops
+      // Remove GPS track and streets layers when tracking stops
       if (mapRef.current) {
+        if (mapRef.current.getLayer('gps-track-layer')) {
+          mapRef.current.removeLayer('gps-track-layer');
+        }
+        if (mapRef.current.getSource('gps-track')) {
+          mapRef.current.removeSource('gps-track');
+        }
         if (mapRef.current.getLayer('streets-layer')) {
           mapRef.current.removeLayer('streets-layer');
         }
@@ -274,10 +321,19 @@ export default function MapView() {
       
       setIsTracking(false);
       setIsLoading(false);
-      
-      // Show success message
-      alert(`Exploration terminée!\n${Math.round(result.distance)}m parcourus\n${result.newStreets} rues découvertes`);
-      
+
+      // Show success toast
+      toast.success('🎉 Exploration terminée!', {
+        description: `${Math.round(result.distance)}m parcourus • ${result.newStreets} rues découvertes`,
+        duration: 5000,
+        action: {
+          label: 'Voir la carte',
+          onClick: () => {
+            // Map already visible, could scroll to top or reset view
+          }
+        }
+      });
+
       // Reset stats
       setTrackingStats({ distance: 0, duration: 0, streetsExplored: 0 });
       

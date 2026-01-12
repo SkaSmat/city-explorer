@@ -1,6 +1,7 @@
 import { overpassService, type Street } from './OverpassService';
 import { streetMatcher, type GPSPoint } from './StreetMatcher';
 import { supabaseGeo } from '@/lib/supabaseGeo';
+import { badgeChecker } from './BadgeChecker';
 
 interface TrackingSession {
   sessionId: string;
@@ -115,6 +116,18 @@ class GPSTracker {
 
     const result = { distance, newStreets, duration };
 
+    // Check and unlock badges (after stats are updated in DB)
+    const userId = this.session.userId;
+
+    // Small delay to ensure DB updates are committed
+    setTimeout(async () => {
+      try {
+        await badgeChecker.checkAndUnlockBadges(userId);
+      } catch (err) {
+        console.error('Error checking badges:', err);
+      }
+    }, 1000);
+
     // Nettoyer la session
     this.session = null;
 
@@ -139,6 +152,7 @@ class GPSTracker {
       currentPosition: lastPoint ? { lat: lastPoint.lat, lng: lastPoint.lng } : null,
       streets: this.session.streets,
       exploredStreetIds: this.session.exploredStreetIds,
+      gpsPoints: this.session.gpsPoints,
     };
   }
 

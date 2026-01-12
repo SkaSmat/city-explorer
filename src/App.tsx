@@ -14,6 +14,7 @@ import SelectCity from "./pages/SelectCity";
 import Cities from "./pages/Cities";
 import Settings from "./pages/Settings";
 import EditProfile from "./pages/EditProfile";
+import Leaderboard from "./pages/Leaderboard";
 import NotFound from "./pages/NotFound";
 import { testSupabaseConnection } from './lib/testConnection';
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/cities" element={<Cities />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/edit-profile" element={<EditProfile />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

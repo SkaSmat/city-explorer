@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { MapPin, Route, Building2, Flame, Plus, ChevronRight, Bell } from "lucide-react";
+import { MapPin, Route, Building2, Flame, Plus, ChevronRight, Bell, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,8 @@ import { explorationEvents } from "@/hooks/useExplorationRefresh";
 import { User } from "@supabase/supabase-js";
 import { SkeletonStat, SkeletonCityCard } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n";
+import { cityProgressService } from "@/services/CityProgressService";
 
 interface UserStats {
   totalDistance: number;
@@ -27,6 +29,7 @@ interface CityProgress {
 
 export default function Home() {
   const navigate = useNavigate();
+  const { t, lang } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<UserStats>({
@@ -138,17 +141,29 @@ export default function Home() {
           currentStreak: streak,
         });
 
-        // Update cities with progress
+        // Update cities with progress - start with 0, then calculate
         const citiesWithProgress: CityProgress[] = (cityData || []).map(city => ({
           city: city.city,
           streetsExplored: city.streets_explored,
           totalDistanceMeters: city.total_distance_meters,
           lastActivity: city.last_activity,
-          progressPercent: 0, // We don't have total streets count yet, will calculate later
+          progressPercent: 0,
         }));
 
         setCities(citiesWithProgress);
         setLoadingData(false);
+
+        // Calculate progress percentages in background
+        if (citiesWithProgress.length > 0) {
+          const progressMap = await cityProgressService.getCitiesProgress(
+            citiesWithProgress.map(c => ({ city: c.city, streetsExplored: c.streetsExplored }))
+          );
+          
+          setCities(prev => prev.map(city => ({
+            ...city,
+            progressPercent: progressMap.get(city.city) || 0,
+          })));
+        }
       } catch (err) {
         console.error('Error loading user data:', err);
         setLoadingData(false);
@@ -174,26 +189,26 @@ export default function Home() {
   const displayStats = [
     {
       icon: Route,
-      label: "Distance totale",
+      label: t('home.totalDistance'),
       value: loadingData ? "..." : `${(stats.totalDistance / 1000).toFixed(1)} km`,
       color: "text-primary"
     },
     {
       icon: MapPin,
-      label: "Rues explorées",
+      label: t('home.streetsExplored'),
       value: loadingData ? "..." : stats.totalStreets.toLocaleString(),
       color: "text-secondary"
     },
     {
       icon: Building2,
-      label: "Villes visitées",
+      label: t('home.citiesVisited'),
       value: loadingData ? "..." : stats.totalCities.toString(),
       color: "text-accent"
     },
     {
       icon: Flame,
-      label: "Streak actuel",
-      value: loadingData ? "..." : `${stats.currentStreak} jour${stats.currentStreak > 1 ? 's' : ''}`,
+      label: t('home.currentStreak'),
+      value: loadingData ? "..." : `${stats.currentStreak} ${stats.currentStreak > 1 ? t('home.days') : t('home.day')}`,
       color: "text-orange-500"
     },
   ];
@@ -208,17 +223,26 @@ export default function Home() {
               {username.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Welcome back 👋</p>
+              <p className="text-sm text-muted-foreground">{t('home.welcomeBack')}</p>
               <h1 className="text-xl font-bold">{username}</h1>
             </div>
           </div>
-          <button 
-            className="relative p-2 rounded-full hover:bg-muted transition-all hover:scale-110" 
-            aria-label="Notifications"
-            onClick={() => toast.info("Notifications bientôt disponibles")}
-          >
-            <Bell className="w-6 h-6 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              className="relative p-2 rounded-full hover:bg-muted transition-all hover:scale-110" 
+              aria-label="Leaderboard"
+              onClick={() => navigate('/leaderboard')}
+            >
+              <Trophy className="w-6 h-6 text-muted-foreground" />
+            </button>
+            <button 
+              className="relative p-2 rounded-full hover:bg-muted transition-all hover:scale-110" 
+              aria-label="Notifications"
+              onClick={() => toast.info(t('notifications.comingSoon'))}
+            >
+              <Bell className="w-6 h-6 text-muted-foreground" />
+            </button>
+          </div>
         </header>
 
         {/* Stats Grid */}
@@ -241,7 +265,7 @@ export default function Home() {
         {/* Cities Section */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Your Cities</h2>
+            <h2 className="text-xl font-bold">{t('home.yourCities')}</h2>
             {cities.length > 3 && (
               <Button 
                 variant="ghost" 
@@ -249,7 +273,7 @@ export default function Home() {
                 className="text-primary"
                 onClick={() => navigate('/cities')}
               >
-                See all
+                {t('common.seeAll')}
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             )}
@@ -267,10 +291,10 @@ export default function Home() {
                 <div className="text-center py-12">
                   <MapPin className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
                   <p className="text-muted-foreground mb-4">
-                    Aucune ville explorée pour le moment
+                    {t('home.noCities')}
                   </p>
                   <p className="text-sm text-muted-foreground mb-6">
-                    Commencez votre aventure en explorant une nouvelle ville !
+                    {t('home.startExploring')}
                   </p>
                 </div>
               ) : (
@@ -315,19 +339,19 @@ export default function Home() {
                             <h3 className="font-semibold text-lg">{city.city}</h3>
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">
-                            {city.streetsExplored.toLocaleString()} rues • {(city.totalDistanceMeters / 1000).toFixed(1)} km
+                            {city.streetsExplored.toLocaleString()} {t('home.streets')} • {(city.totalDistanceMeters / 1000).toFixed(1)} km
                           </p>
                           <div className="space-y-1">
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Dernière activité</span>
+                              <span className="text-muted-foreground">{t('home.lastActivity')}</span>
                               <span className="font-medium text-xs">
-                                {new Date(city.lastActivity).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                {new Date(city.lastActivity).toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'fr-FR', { day: 'numeric', month: 'short' })}
                               </span>
                             </div>
                             {city.progressPercent > 0 && (
                               <>
                                 <div className="flex items-center justify-between text-sm">
-                                  <span className="text-muted-foreground">Progression</span>
+                                  <span className="text-muted-foreground">{t('home.progress')}</span>
                                   <span className="font-medium text-secondary">{city.progressPercent}%</span>
                                 </div>
                                 <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -354,7 +378,7 @@ export default function Home() {
                 onClick={() => navigate('/map')}
               >
                 <Plus className="w-5 h-5 mr-2" />
-                Ajouter une nouvelle ville
+                {t('home.addCity')}
               </Button>
             </div>
           )}

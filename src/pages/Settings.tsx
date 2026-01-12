@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { toast } from "sonner";
 import { usePreferences } from "@/hooks/usePreferences";
+import { useTranslation } from "@/lib/i18n";
 import {
   Select,
   SelectContent,
@@ -28,13 +29,14 @@ import {
 export default function Settings() {
   const navigate = useNavigate();
   const { preferences, updatePreference } = usePreferences();
+  const { t } = useTranslation();
 
   const handleSave = () => {
-    toast.success("Préférences sauvegardées automatiquement");
+    toast.success(t('settings.savedAuto'));
   };
 
   const handleDeleteAccount = () => {
-    toast.info("Fonctionnalité en cours de développement");
+    toast.info(t('common.comingSoon'));
   };
 
   return (
@@ -50,20 +52,20 @@ export default function Settings() {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-2xl font-bold">Préférences</h1>
+          <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
         </header>
 
         {/* Notifications Section */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Bell className="w-5 h-5 text-primary" />
-            Notifications
+            {t('settings.notifications')}
           </h2>
           <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="notifications" className="font-medium">Notifications push</Label>
-                <p className="text-sm text-muted-foreground">Recevoir des notifications</p>
+                <Label htmlFor="notifications" className="font-medium">{t('settings.pushNotifications')}</Label>
+                <p className="text-sm text-muted-foreground">{t('settings.receiveNotifications')}</p>
               </div>
               <Switch
                 id="notifications"
@@ -73,8 +75,8 @@ export default function Settings() {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="badges" className="font-medium">Badges débloqués</Label>
-                <p className="text-sm text-muted-foreground">Notification lors d'un nouveau badge</p>
+                <Label htmlFor="badges" className="font-medium">{t('settings.badgesUnlocked')}</Label>
+                <p className="text-sm text-muted-foreground">{t('settings.badgeNotification')}</p>
               </div>
               <Switch
                 id="badges"
@@ -85,8 +87,8 @@ export default function Settings() {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="streak" className="font-medium">Rappels de streak</Label>
-                <p className="text-sm text-muted-foreground">Rappel quotidien pour maintenir votre streak</p>
+                <Label htmlFor="streak" className="font-medium">{t('settings.streakReminders')}</Label>
+                <p className="text-sm text-muted-foreground">{t('settings.streakReminderDesc')}</p>
               </div>
               <Switch
                 id="streak"
@@ -102,13 +104,13 @@ export default function Settings() {
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Moon className="w-5 h-5 text-primary" />
-            Apparence
+            {t('settings.appearance')}
           </h2>
           <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="darkMode" className="font-medium">Mode sombre</Label>
-                <p className="text-sm text-muted-foreground">Utiliser le thème sombre</p>
+                <Label htmlFor="darkMode" className="font-medium">{t('settings.darkMode')}</Label>
+                <p className="text-sm text-muted-foreground">{t('settings.useDarkTheme')}</p>
               </div>
               <Switch
                 id="darkMode"
@@ -123,17 +125,20 @@ export default function Settings() {
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Globe className="w-5 h-5 text-primary" />
-            Région
+            {t('settings.region')}
           </h2>
           <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label className="font-medium">Langue</Label>
-                <p className="text-sm text-muted-foreground">Langue de l'application</p>
+                <Label className="font-medium">{t('settings.language')}</Label>
+                <p className="text-sm text-muted-foreground">{t('settings.languageDesc')}</p>
               </div>
               <Select 
                 value={preferences.language} 
-                onValueChange={(value: 'fr' | 'en' | 'es') => updatePreference('language', value)}
+                onValueChange={(value: 'fr' | 'en' | 'es') => {
+                  updatePreference('language', value);
+                  toast.success(t('settings.savedAuto'));
+                }}
               >
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -147,19 +152,22 @@ export default function Settings() {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <Label className="font-medium">Unités</Label>
-                <p className="text-sm text-muted-foreground">Système de mesure</p>
+                <Label className="font-medium">{t('settings.units')}</Label>
+                <p className="text-sm text-muted-foreground">{t('settings.unitsDesc')}</p>
               </div>
               <Select 
                 value={preferences.units} 
-                onValueChange={(value: 'metric' | 'imperial') => updatePreference('units', value)}
+                onValueChange={(value: 'metric' | 'imperial') => {
+                  updatePreference('units', value);
+                  toast.success(t('settings.savedAuto'));
+                }}
               >
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="metric">Métrique (km)</SelectItem>
-                  <SelectItem value="imperial">Impérial (mi)</SelectItem>
+                  <SelectItem value="metric">{t('settings.metric')}</SelectItem>
+                  <SelectItem value="imperial">{t('settings.imperial')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -170,11 +178,11 @@ export default function Settings() {
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <MapPin className="w-5 h-5 text-primary" />
-            Carte
+            {t('settings.map')}
           </h2>
           <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
             <p className="text-sm text-muted-foreground">
-              Les paramètres de carte seront bientôt disponibles.
+              {t('settings.mapSettingsSoon')}
             </p>
           </div>
         </section>
@@ -183,18 +191,21 @@ export default function Settings() {
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Shield className="w-5 h-5 text-primary" />
-            Confidentialité
+            {t('settings.privacy')}
           </h2>
           <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="publicProfile" className="font-medium">Profil public</Label>
-                <p className="text-sm text-muted-foreground">Permettre aux autres de voir votre profil</p>
+                <Label htmlFor="publicProfile" className="font-medium">{t('settings.publicProfile')}</Label>
+                <p className="text-sm text-muted-foreground">{t('settings.publicProfileDesc')}</p>
               </div>
               <Switch
                 id="publicProfile"
                 checked={preferences.publicProfile}
-                onCheckedChange={(checked) => updatePreference('publicProfile', checked)}
+                onCheckedChange={(checked) => {
+                  updatePreference('publicProfile', checked);
+                  toast.success(t('settings.savedAuto'));
+                }}
               />
             </div>
           </div>
@@ -204,31 +215,31 @@ export default function Settings() {
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-destructive">
             <Trash2 className="w-5 h-5" />
-            Zone de danger
+            {t('settings.dangerZone')}
           </h2>
           <div className="bg-card rounded-2xl border border-destructive/50 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Supprimer mon compte</p>
-                <p className="text-sm text-muted-foreground">Cette action est irréversible</p>
+                <p className="font-medium">{t('settings.deleteAccount')}</p>
+                <p className="text-sm text-muted-foreground">{t('settings.deleteAccountDesc')}</p>
               </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
-                    Supprimer
+                    {t('common.delete')}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                    <AlertDialogTitle>{t('settings.confirmDelete')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Cette action est irréversible. Toutes vos données seront définitivement supprimées.
+                      {t('settings.confirmDeleteDesc')}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDeleteAccount}>
-                      Supprimer mon compte
+                      {t('settings.deleteAccount')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -239,7 +250,7 @@ export default function Settings() {
 
         {/* Save Button */}
         <Button onClick={handleSave} className="w-full rounded-xl">
-          Sauvegarder les préférences
+          {t('common.save')}
         </Button>
       </div>
     </AppLayout>

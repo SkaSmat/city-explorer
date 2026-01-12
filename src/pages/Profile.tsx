@@ -21,7 +21,7 @@ import { supabaseGeo } from "@/lib/supabaseGeo";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { SkeletonStat, SkeletonBadge } from "@/components/ui/skeleton";
-import { retryQuery } from "@/lib/retryQuery";
+import { BadgesModal } from "@/components/BadgesModal";
 
 interface UserStats {
   totalDistance: number;
@@ -41,10 +41,16 @@ interface Badge {
   unlockedAt: string | null;
 }
 
+interface ProfileData {
+  total_distance_meters: number | null;
+  total_streets_explored: number | null;
+  created_at: string | null;
+}
+
 const settingsItems = [
-  { icon: Settings, label: "Préférences", href: "#preferences" },
-  { icon: Shield, label: "Confidentialité", href: "#privacy" },
-  { icon: HelpCircle, label: "Aide", href: "#help" },
+  { icon: Settings, label: "Préférences", action: "settings" },
+  { icon: Shield, label: "Confidentialité", action: "privacy" },
+  { icon: HelpCircle, label: "Aide", action: "help" },
 ];
 
 export default function Profile() {
@@ -61,6 +67,7 @@ export default function Profile() {
     badgesUnlocked: 0,
   });
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [showBadgesModal, setShowBadgesModal] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -92,24 +99,17 @@ export default function Profile() {
       try {
         setLoadingData(true);
 
-        // Fetch user profile stats (with retry logic)
-        const { data: profile, error: profileError } = await retryQuery(
-          () => supabaseGeo
-            .from('user_profiles')
-            .select('total_distance_meters, total_streets_explored, created_at')
-            .eq('id', user.id)
-            .single(),
-          {
-            maxRetries: 3,
-            onRetry: (attempt) => {
-              toast.info(`Reconnexion... (tentative ${attempt}/3)`);
-            }
-          }
-        );
+        // Fetch user profile stats
+        const { data: profile, error: profileError } = await supabaseGeo
+          .from('user_profiles')
+          .select('total_distance_meters, total_streets_explored, created_at')
+          .eq('id', user.id)
+          .single();
+
+        const typedProfile = profile as ProfileData | null;
 
         if (profileError) {
           console.error('Error loading profile:', profileError);
-          toast.error('Erreur de chargement du profil');
         }
 
         // Fetch city count
@@ -187,11 +187,11 @@ export default function Profile() {
 
         // Update stats
         setStats({
-          totalDistance: profile?.total_distance_meters || 0,
-          totalStreets: profile?.total_streets_explored || 0,
+          totalDistance: typedProfile?.total_distance_meters || 0,
+          totalStreets: typedProfile?.total_streets_explored || 0,
           totalCities: cities?.length || 0,
           currentStreak: streak,
-          memberSince: profile?.created_at || user.created_at,
+          memberSince: typedProfile?.created_at || user.created_at,
           badgesUnlocked: unlockedMap.size,
         });
 
@@ -259,9 +259,25 @@ export default function Profile() {
     },
   ];
 
+  const handleSettingsClick = (action: string) => {
+    switch (action) {
+      case 'settings':
+        navigate('/settings');
+        break;
+      case 'privacy':
+        navigate('/settings');
+        break;
+      case 'help':
+        toast.info("Centre d'aide bientôt disponible");
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <AppLayout>
-      <div className="px-6 py-8">
+      <div className="px-6 py-8 pb-24">
         {/* Profile Header */}
         <header className="text-center mb-8 animate-fade-in">
           <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-3xl animate-gradient shadow-lg">
@@ -269,7 +285,12 @@ export default function Profile() {
           </div>
           <h1 className="text-2xl font-bold mb-1">{username}</h1>
           <p className="text-muted-foreground text-sm mb-4">{email}</p>
-          <Button variant="outline" size="sm" className="rounded-xl transition-all hover:scale-105">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="rounded-xl transition-all hover:scale-105"
+            onClick={() => navigate('/edit-profile')}
+          >
             Modifier le profil
           </Button>
         </header>
@@ -307,7 +328,12 @@ export default function Profile() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Vos Badges</h2>
             {badges.length > 6 && (
-              <Button variant="ghost" size="sm" className="text-primary">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary"
+                onClick={() => setShowBadgesModal(true)}
+              >
                 Voir tout
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
@@ -329,7 +355,7 @@ export default function Profile() {
               {badges.slice(0, 9).map((badge, index) => (
                 <div
                   key={badge.id}
-                  className={`bg-card rounded-xl border border-border p-4 text-center transition-all animate-scale-in stagger-delay-${index + 1} ${
+                  className={`bg-card rounded-xl border border-border p-4 text-center transition-all animate-scale-in stagger-delay-${index + 1} relative ${
                     badge.unlocked ? "card-hover" : "opacity-50 grayscale"
                   }`}
                   title={badge.description}
@@ -360,6 +386,7 @@ export default function Profile() {
             {settingsItems.map((item, index) => (
               <button
                 key={item.label}
+                onClick={() => handleSettingsClick(item.action)}
                 className={`w-full flex items-center justify-between px-4 py-4 hover:bg-muted/50 transition-colors ${
                   index !== settingsItems.length - 1 ? "border-b border-border" : ""
                 }`}
@@ -384,6 +411,13 @@ export default function Profile() {
           Se déconnecter
         </Button>
       </div>
+
+      {/* Badges Modal */}
+      <BadgesModal
+        open={showBadgesModal}
+        onOpenChange={setShowBadgesModal}
+        badges={badges}
+      />
     </AppLayout>
   );
 }

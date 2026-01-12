@@ -1,10 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Client Supabase externe pour les données géospatiales (PostGIS)
-// Note: anon key is a publishable key, safe to include in client code
-const supabaseUrl = 'https://anujltoavoafclklucdx.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFudWpsdG9hdm9hZmNsa2x1Y2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMzIyNTQsImV4cCI6MjA4MzcwODI1NH0.eRjOECx2G5_MrL2KvXWw4vRDnP-JEOYm_70VXkPf5AU';
+// IMPORTANT: Ces clés doivent être dans les variables d'environnement (.env)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL_GEO;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY_GEO;
 const supabaseServiceKey = import.meta.env.VITE_EXTERNAL_SUPABASE_SERVICE_KEY;
+
+// Validation des variables d'environnement
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error(
+    '❌ ERREUR CRITIQUE: Variables d\'environnement Supabase manquantes!\n' +
+    'Vérifiez que VITE_SUPABASE_URL_GEO et VITE_SUPABASE_ANON_KEY_GEO sont définies dans .env'
+  );
+  throw new Error('Missing Supabase environment variables');
+}
 
 export const supabaseGeo = createClient(supabaseUrl, supabaseAnonKey);
 

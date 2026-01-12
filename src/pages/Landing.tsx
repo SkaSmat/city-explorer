@@ -70,9 +70,12 @@ export default function Landing() {
                 <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <button 
+            <button
               onClick={() => {
-                document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                document.getElementById('features')?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start'
+                });
               }}
               className="text-primary font-medium underline underline-offset-4 hover:text-primary/80 transition-colors"
             >

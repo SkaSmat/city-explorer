@@ -262,6 +262,19 @@ export default function MapView() {
     };
   }, [isTracking]);
 
+  // Cleanup GPS tracking on component unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // If tracking is active when component unmounts, stop it
+      if (isTracking) {
+        console.log('⚠️ Component unmounting while tracking active - stopping GPS tracker');
+        gpsTracker.stopTracking().catch(err => {
+          console.error('Error stopping tracker on unmount:', err);
+        });
+      }
+    };
+  }, []); // Empty deps = runs only on mount/unmount
+
   // Detect city using reverse geocoding
   const detectCity = async (lat: number, lng: number): Promise<string> => {
     try {

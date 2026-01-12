@@ -9,8 +9,6 @@ import { explorationEvents } from "@/hooks/useExplorationRefresh";
 import { User } from "@supabase/supabase-js";
 import { SkeletonStat, SkeletonCityCard } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { useTranslation } from "@/lib/i18n";
-import { cityProgressService } from "@/services/CityProgressService";
 
 interface UserStats {
   totalDistance: number;
@@ -227,22 +225,14 @@ export default function Home() {
               <h1 className="text-xl font-bold">{username}</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button 
-              className="relative p-2 rounded-full hover:bg-muted transition-all hover:scale-110" 
-              aria-label="Leaderboard"
-              onClick={() => navigate('/leaderboard')}
-            >
-              <Trophy className="w-6 h-6 text-muted-foreground" />
-            </button>
-            <button 
-              className="relative p-2 rounded-full hover:bg-muted transition-all hover:scale-110" 
-              aria-label="Notifications"
-              onClick={() => toast.info(t('notifications.comingSoon'))}
-            >
-              <Bell className="w-6 h-6 text-muted-foreground" />
-            </button>
-          </div>
+          <button
+            className="relative p-2 rounded-full hover:bg-muted transition-all hover:scale-110"
+            aria-label="Notifications"
+            onClick={() => toast.info("🔔 Système de notifications bientôt disponible !")}
+          >
+            <Bell className="w-6 h-6 text-muted-foreground" />
+            {/* Hide notification dot for now - can be enabled later */}
+          </button>
         </header>
 
         {/* Stats Grid */}
@@ -267,13 +257,13 @@ export default function Home() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">{t('home.yourCities')}</h2>
             {cities.length > 3 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="text-primary"
-                onClick={() => navigate('/cities')}
+                onClick={() => toast.info("🌍 Page complète des villes bientôt disponible !")}
               >
-                {t('common.seeAll')}
+                See all
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             )}

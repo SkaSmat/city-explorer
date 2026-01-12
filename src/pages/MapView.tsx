@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { gpsTracker } from "@/services/GPSTracker";
+import { ensureUserInGeo } from "@/lib/supabaseGeo";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -81,10 +82,10 @@ export default function MapView() {
     };
   }, []);
 
-  // Update stats every second during tracking
+  // Update stats and position every second during tracking
   useEffect(() => {
     if (!isTracking) return;
-    
+
     const interval = setInterval(() => {
       const state = gpsTracker.getCurrentState();
       if (state) {
@@ -93,10 +94,98 @@ export default function MapView() {
           duration: Math.round(state.duration / 1000),
           streetsExplored: state.streetsExplored
         });
+
+        // Update blue marker position
+        if (state.currentPosition && mapRef.current) {
+          const { lat, lng } = state.currentPosition;
+
+          // Create marker if it doesn't exist
+          if (!markerRef.current) {
+            markerRef.current = new maplibregl.Marker({
+              color: '#3B82F6',
+              scale: 1.2
+            })
+              .setLngLat([lng, lat])
+              .addTo(mapRef.current);
+          } else {
+            // Update marker position
+            markerRef.current.setLngLat([lng, lat]);
+          }
+
+          // Optionally recenter map on user position
+          mapRef.current.panTo([lng, lat], { duration: 500 });
+        }
+
+        // Update streets layer with explored streets
+        if (state.streets && state.exploredStreetIds && mapRef.current) {
+          const map = mapRef.current;
+          const exploredIds = Array.from(state.exploredStreetIds);
+
+          // Convert streets to GeoJSON
+          const geojson: GeoJSON.FeatureCollection = {
+            type: 'FeatureCollection',
+            features: state.streets.map(street => ({
+              type: 'Feature',
+              id: street.id,
+              properties: {
+                name: street.name,
+                type: street.type,
+                explored: exploredIds.includes(street.id)
+              },
+              geometry: {
+                type: 'LineString',
+                coordinates: street.coordinates
+              }
+            }))
+          };
+
+          // Add or update source
+          if (map.getSource('streets')) {
+            (map.getSource('streets') as maplibregl.GeoJSONSource).setData(geojson);
+          } else {
+            map.addSource('streets', {
+              type: 'geojson',
+              data: geojson
+            });
+
+            // Add layer for streets
+            map.addLayer({
+              id: 'streets-layer',
+              type: 'line',
+              source: 'streets',
+              paint: {
+                'line-color': [
+                  'case',
+                  ['get', 'explored'],
+                  '#22c55e', // Green for explored
+                  '#94a3b8'  // Gray for unexplored
+                ],
+                'line-width': 3,
+                'line-opacity': 0.8
+              }
+            }, 'osm'); // Add below OSM tiles
+          }
+        }
       }
     }, 1000);
-    
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      // Remove marker when tracking stops
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+      // Remove streets layer when tracking stops
+      if (mapRef.current) {
+        if (mapRef.current.getLayer('streets-layer')) {
+          mapRef.current.removeLayer('streets-layer');
+        }
+        if (mapRef.current.getSource('streets')) {
+          mapRef.current.removeSource('streets');
+        }
+      }
+    };
   }, [isTracking]);
 
   // Detect city using reverse geocoding
@@ -132,11 +221,14 @@ export default function MapView() {
       setError("Vous devez être connecté");
       return;
     }
-    
+
     try {
       setIsLoading(true);
       setError(null);
-      
+
+      // Ensure user exists in geo database (fix foreign key error)
+      await ensureUserInGeo(userId);
+
       // Get current position and detect city
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {

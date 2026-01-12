@@ -128,6 +128,7 @@ class GPSTracker {
 
     const distance = streetMatcher.calculateTotalDistance(this.session.gpsPoints);
     const duration = Date.now() - this.session.startTime;
+    const lastPoint = this.session.gpsPoints[this.session.gpsPoints.length - 1];
 
     return {
       distance,
@@ -135,6 +136,9 @@ class GPSTracker {
       streetsExplored: this.session.exploredStreetIds.size,
       pointsRecorded: this.session.gpsPoints.length,
       isActive: this.session.isActive,
+      currentPosition: lastPoint ? { lat: lastPoint.lat, lng: lastPoint.lng } : null,
+      streets: this.session.streets,
+      exploredStreetIds: this.session.exploredStreetIds,
     };
   }
 

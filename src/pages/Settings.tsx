@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell, Moon, Globe, MapPin, Shield, Trash2 } from "lucide-react";
+import { ArrowLeft, Bell, Moon, Globe, MapPin, Shield, Trash2, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,9 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { toast } from "sonner";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useTranslation } from "@/lib/i18n";
+import { stravaService } from "@/services/StravaService";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -30,6 +33,49 @@ export default function Settings() {
   const navigate = useNavigate();
   const { preferences, updatePreference } = usePreferences();
   const { t } = useTranslation();
+  const [stravaConnected, setStravaConnected] = useState(false);
+  const [checkingStrava, setCheckingStrava] = useState(true);
+
+  useEffect(() => {
+    checkStravaConnection();
+  }, []);
+
+  const checkStravaConnection = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      const { data } = await supabase
+        .from('strava_connections')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      setStravaConnected(!!data);
+    } catch (error) {
+      console.error('Error checking Strava connection:', error);
+    } finally {
+      setCheckingStrava(false);
+    }
+  };
+
+  const handleStravaConnect = () => {
+    window.location.href = stravaService.getAuthUrl();
+  };
+
+  const handleStravaDisconnect = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      await stravaService.disconnect(session.user.id);
+      setStravaConnected(false);
+      toast.success('Compte Strava déconnecté');
+    } catch (error) {
+      console.error('Error disconnecting Strava:', error);
+      toast.error('Erreur lors de la déconnexion');
+    }
+  };
 
   const handleSave = () => {
     toast.success(t('settings.savedAuto'));
@@ -184,6 +230,48 @@ export default function Settings() {
             <p className="text-sm text-muted-foreground">
               {t('settings.mapSettingsSoon')}
             </p>
+          </div>
+        </section>
+
+        {/* Strava Integration Section */}
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary" />
+            Strava
+          </h2>
+          <div className="bg-card rounded-2xl border border-border p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">
+                  {stravaConnected ? 'Compte Strava connecté' : 'Connecter Strava'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {stravaConnected
+                    ? 'Importez vos activités Strava automatiquement'
+                    : 'Connectez votre compte pour importer vos activités'
+                  }
+                </p>
+              </div>
+              {!checkingStrava && (
+                stravaConnected ? (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleStravaDisconnect}
+                  >
+                    Déconnecter
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="bg-[#FC4C02] hover:bg-[#E34402] text-white"
+                    onClick={handleStravaConnect}
+                  >
+                    Connecter
+                  </Button>
+                )
+              )}
+            </div>
           </div>
         </section>
 

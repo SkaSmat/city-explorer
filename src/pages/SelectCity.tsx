@@ -46,11 +46,11 @@ export default function SelectCity() {
 
   // Handle city selection
   const handleCitySelect = (city: City) => {
-    toast.success(\`\${city.flag} \${city.name} sélectionnée\`, {
-      description: \`Vous allez explorer \${city.name}\`,
+    toast.success(`${city.flag} ${city.name} sélectionnée`, {
+      description: `Vous allez explorer ${city.name}`,
     });
     // Navigate to map with city parameter
-    navigate(\`/map?city=\${encodeURIComponent(city.name)}&lat=\${city.lat}&lng=\${city.lng}\`);
+    navigate(`/map?city=${encodeURIComponent(city.name)}&lat=${city.lat}&lng=${city.lng}`);
   };
 
   // Detect current location
@@ -67,7 +67,7 @@ export default function SelectCity() {
 
       // Reverse geocode to get city name
       const response = await fetch(
-        \`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${position.coords.latitude}&lon=\${position.coords.longitude}\`,
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`,
         {
           headers: {
             'User-Agent': 'StreetExplorer/1.0',
@@ -83,11 +83,11 @@ export default function SelectCity() {
         data.address?.municipality ||
         'Unknown City';
 
-      toast.success(\`📍 Position détectée\`, {
-        description: \`Vous êtes à \${cityName}\`,
+      toast.success(`📍 Position détectée`, {
+        description: `Vous êtes à ${cityName}`,
       });
 
-      navigate(\`/map?city=\${encodeURIComponent(cityName)}&lat=\${position.coords.latitude}&lng=\${position.coords.longitude}\`);
+      navigate(`/map?city=${encodeURIComponent(cityName)}&lat=${position.coords.latitude}&lng=${position.coords.longitude}`);
     } catch (error: any) {
       console.error('Location detection error:', error);
       toast.error('Erreur de localisation', {
@@ -107,7 +107,7 @@ export default function SelectCity() {
     setIsSearching(true);
     try {
       const response = await fetch(
-        \`https://nominatim.openstreetmap.org/search?format=json&q=\${encodeURIComponent(searchQuery)}&limit=10&addressdetails=1\`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=10&addressdetails=1`,
         {
           headers: {
             'User-Agent': 'StreetExplorer/1.0',
@@ -214,7 +214,7 @@ export default function SelectCity() {
             <div className="grid gap-3">
               {searchResults.map((city, index) => (
                 <button
-                  key={\`\${city.name}-\${index}\`}
+                  key={`${city.name}-${index}`}
                   onClick={() => handleCitySelect(city)}
                   className="bg-card border border-border rounded-xl p-4 hover:bg-muted/50 transition-all text-left card-hover"
                 >

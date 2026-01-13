@@ -2,6 +2,7 @@ import { overpassService, type Street } from './OverpassService';
 import { streetMatcher, type GPSPoint } from './StreetMatcher';
 import { supabaseGeo } from '@/lib/supabaseGeo';
 import { badgeChecker } from './BadgeChecker';
+import { toast } from 'sonner';
 
 interface TrackingSession {
   sessionId: string;
@@ -12,6 +13,7 @@ interface TrackingSession {
   exploredStreetIds: Set<number>;
   streets: Street[];
   isActive: boolean;
+  batteryOptimized: boolean;
 }
 
 class GPSTracker {
@@ -42,6 +44,7 @@ class GPSTracker {
       exploredStreetIds: new Set(),
       streets: [],
       isActive: true,
+      batteryOptimized: false,
     };
 
     // Obtenir la position initiale
@@ -76,9 +79,10 @@ class GPSTracker {
       }
     );
 
-    // Update toutes les 10 secondes
+    // Update toutes les 10 secondes initialement
     this.updateInterval = setInterval(() => {
       this.processCurrentTrack();
+      this.checkBatteryOptimization();
     }, 10000);
 
     console.log('✅ Tracking started');
@@ -173,10 +177,30 @@ class GPSTracker {
   // Handler position error
   private handlePositionError(error: GeolocationPositionError) {
     console.error('GPS error:', error.message);
-    
+
     if (error.code === error.PERMISSION_DENIED) {
-      alert('Please enable location permission to use tracking');
+      toast.error('Permission GPS refusée', {
+        description: 'Veuillez activer la localisation dans les paramètres de votre navigateur.',
+        duration: 5000,
+        action: {
+          label: 'Comment faire?',
+          onClick: () => {
+            toast.info('Paramètres de localisation', {
+              description: 'Chrome: Paramètres > Confidentialité > Paramètres des sites > Localisation\nSafari: Paramètres > Confidentialité > Services de localisation',
+              duration: 8000
+            });
+          }
+        }
+      });
       this.stopTracking();
+    } else if (error.code === error.TIMEOUT) {
+      toast.warning('Délai dépassé', {
+        description: 'La localisation GPS prend trop de temps. Vérifiez votre connexion GPS.'
+      });
+    } else if (error.code === error.POSITION_UNAVAILABLE) {
+      toast.error('Position indisponible', {
+        description: 'Impossible d\'obtenir votre position. Vérifiez que le GPS est activé.'
+      });
     }
   }
 
@@ -192,6 +216,48 @@ class GPSTracker {
     exploredIds.forEach(id => this.session!.exploredStreetIds.add(id));
 
     console.log(`🗺️ ${this.session.exploredStreetIds.size} streets explored so far`);
+  }
+
+  // Check if battery optimization should be enabled (after 30 minutes)
+  private checkBatteryOptimization() {
+    if (!this.session?.isActive || this.session.batteryOptimized) return;
+
+    const duration = Date.now() - this.session.startTime;
+    const thirtyMinutes = 30 * 60 * 1000;
+
+    if (duration >= thirtyMinutes) {
+      console.log('🔋 Enabling battery optimization (reducing GPS frequency)');
+      this.session.batteryOptimized = true;
+
+      // Stop current watch
+      if (this.watchId !== null) {
+        navigator.geolocation.clearWatch(this.watchId);
+      }
+
+      // Restart with lower frequency (maximumAge increased to 10 seconds)
+      this.watchId = navigator.geolocation.watchPosition(
+        (position) => this.handlePositionUpdate(position),
+        (error) => this.handlePositionError(error),
+        {
+          enableHighAccuracy: true,
+          maximumAge: 10000, // Increased from 5000
+          timeout: 15000,     // Increased from 10000
+        }
+      );
+
+      // Reduce update interval from 10s to 15s
+      if (this.updateInterval) {
+        clearInterval(this.updateInterval);
+      }
+      this.updateInterval = setInterval(() => {
+        this.processCurrentTrack();
+      }, 15000);
+
+      toast.info('Mode économie d\'énergie activé', {
+        description: 'La fréquence GPS a été réduite pour économiser la batterie.',
+        duration: 4000
+      });
+    }
   }
 
   // Obtenir la position actuelle (promesse)

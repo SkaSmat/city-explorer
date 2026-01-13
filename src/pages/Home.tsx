@@ -191,19 +191,19 @@ export default function Home() {
       icon: Route,
       label: t('home.totalDistance'),
       value: loadingData ? "..." : `${(stats.totalDistance / 1000).toFixed(1)} km`,
-      color: "text-primary"
+      color: "text-indigo-600"
     },
     {
       icon: MapPin,
       label: t('home.streetsExplored'),
       value: loadingData ? "..." : stats.totalStreets.toLocaleString(),
-      color: "text-secondary"
+      color: "text-emerald-500"
     },
     {
       icon: Building2,
       label: t('home.citiesVisited'),
       value: loadingData ? "..." : stats.totalCities.toString(),
-      color: "text-accent"
+      color: "text-violet-500"
     },
     {
       icon: Flame,
@@ -243,7 +243,7 @@ export default function Home() {
             {displayStats.map((stat, index) => (
               <div
                 key={stat.label}
-                className={`bg-card rounded-2xl border border-border p-4 card-hover animate-fade-in stagger-delay-${index + 1}`}
+                className={`bg-card/95 backdrop-blur-sm rounded-2xl border border-border p-4 card-hover animate-fade-in stagger-delay-${index + 1} shadow-sm`}
                 style={{ animationFillMode: 'both' }}
               >
                 <stat.icon className={`w-6 h-6 ${stat.color} mb-2 transition-transform hover:scale-110`} />
@@ -344,11 +344,11 @@ export default function Home() {
                               <>
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="text-muted-foreground">{t('home.progress')}</span>
-                                  <span className="font-medium text-secondary">{city.progressPercent}%</span>
+                                  <span className="font-medium text-emerald-500">{city.progressPercent}%</span>
                                 </div>
                                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                                   <div
-                                    className="h-full bg-secondary rounded-full transition-all duration-500"
+                                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500 shadow-sm"
                                     style={{ width: `${city.progressPercent}%` }}
                                   />
                                 </div>

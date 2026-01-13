@@ -30,6 +30,7 @@ export default function MapView() {
     streetsExplored: 0
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingStreets, setIsLoadingStreets] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Check auth and get user ID
@@ -431,7 +432,30 @@ export default function MapView() {
       {/* Error Message */}
       {error && (
         <div className="absolute top-20 left-4 right-4 z-10 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl p-4">
-          <p className="text-sm font-medium">{error}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium mb-2">{error}</p>
+              {error.includes('map data') && (
+                <Button
+                  onClick={() => {
+                    setError(null);
+                    handleStartTracking();
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 border-destructive text-destructive hover:bg-destructive/10"
+                >
+                  Réessayer
+                </Button>
+              )}
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-destructive/60 hover:text-destructive"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
@@ -474,25 +498,28 @@ export default function MapView() {
       <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-10">
         <Button
           onClick={handleToggleTracking}
-          disabled={isLoading}
-          className={`w-32 h-32 rounded-full text-lg font-bold shadow-2xl transition-all duration-300 ${
+          disabled={isLoading || isLoadingStreets}
+          className={`w-48 h-48 rounded-full text-xl font-bold shadow-2xl transition-all duration-300 ${
             isTracking
-              ? "bg-destructive hover:bg-destructive/90"
-              : "bg-primary hover:bg-primary/90 animate-pulse-ring"
+              ? "bg-red-500 hover:bg-red-600 animate-pulse"
+              : "bg-indigo-600 hover:bg-indigo-700 animate-pulse-ring"
           }`}
         >
           <div className="flex flex-col items-center gap-2">
-            {isLoading ? (
-              <span className="text-sm">Loading...</span>
+            {isLoading || isLoadingStreets ? (
+              <>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                <span className="text-sm">Chargement...</span>
+              </>
             ) : isTracking ? (
               <>
-                <Pause className="w-8 h-8" />
-                <span className="text-xs">STOP</span>
+                <Pause className="w-12 h-12" />
+                <span className="text-sm font-semibold">STOP</span>
               </>
             ) : (
               <>
-                <Navigation className="w-8 h-8" />
-                <span className="text-xs">START</span>
+                <Navigation className="w-12 h-12" />
+                <span className="text-sm font-semibold">START</span>
               </>
             )}
           </div>

@@ -230,32 +230,38 @@ export default function Profile() {
     {
       icon: Route,
       label: "Distance totale",
-      value: loadingData ? "..." : `${(stats.totalDistance / 1000).toFixed(1)} km`
+      value: loadingData ? "..." : `${(stats.totalDistance / 1000).toFixed(1)} km`,
+      color: "text-indigo-600"
     },
     {
       icon: MapPin,
       label: "Rues explorées",
-      value: loadingData ? "..." : stats.totalStreets.toLocaleString()
+      value: loadingData ? "..." : stats.totalStreets.toLocaleString(),
+      color: "text-emerald-500"
     },
     {
       icon: Building2,
       label: "Villes visitées",
-      value: loadingData ? "..." : stats.totalCities.toString()
+      value: loadingData ? "..." : stats.totalCities.toString(),
+      color: "text-violet-500"
     },
     {
       icon: Flame,
       label: "Streak actuel",
-      value: loadingData ? "..." : `${stats.currentStreak} jour${stats.currentStreak > 1 ? 's' : ''}`
+      value: loadingData ? "..." : `${stats.currentStreak} jour${stats.currentStreak > 1 ? 's' : ''}`,
+      color: "text-orange-500"
     },
     {
       icon: Calendar,
       label: "Membre depuis",
-      value: loadingData ? "..." : new Date(stats.memberSince).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+      value: loadingData ? "..." : new Date(stats.memberSince).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+      color: "text-blue-500"
     },
     {
       icon: Award,
       label: "Badges obtenus",
-      value: loadingData ? "..." : `${stats.badgesUnlocked} / ${badges.length}`
+      value: loadingData ? "..." : `${stats.badgesUnlocked} / ${badges.length}`,
+      color: "text-yellow-500"
     },
   ];
 
@@ -309,11 +315,11 @@ export default function Profile() {
               {displayStats.map((stat, index) => (
                 <div
                   key={stat.label}
-                  className={`bg-card rounded-xl border border-border p-4 card-hover animate-fade-in stagger-delay-${index + 1}`}
+                  className={`bg-card/95 backdrop-blur-sm rounded-xl border border-border p-4 card-hover animate-fade-in stagger-delay-${index + 1} shadow-sm`}
                   style={{ animationFillMode: 'both' }}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <stat.icon className="w-4 h-4 text-primary" />
+                    <stat.icon className={`w-4 h-4 ${stat.color}`} />
                     <span className="text-xs text-muted-foreground">{stat.label}</span>
                   </div>
                   <p className="text-lg font-bold">{stat.value}</p>
@@ -351,7 +357,7 @@ export default function Profile() {
               <p className="text-muted-foreground">Aucun badge disponible pour le moment</p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {badges.slice(0, 9).map((badge, index) => (
                 <div
                   key={badge.id}

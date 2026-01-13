@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Search, Navigation, TrendingUp, X, Loader2 } from "lucide-react";
+import { MapPin, Search, Navigation, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -10,50 +10,52 @@ interface City {
   name: string;
   country: string;
   flag: string;
-  population?: string;
+  lat: number;
+  lng: number;
 }
 
-const POPULAR_CITIES: City[] = [
-  { name: "Paris", country: "France", flag: "🇫🇷", population: "2.2M" },
-  { name: "Lyon", country: "France", flag: "🇫🇷", population: "516K" },
-  { name: "Marseille", country: "France", flag: "🇫🇷", population: "870K" },
-  { name: "Toulouse", country: "France", flag: "🇫🇷", population: "479K" },
-  { name: "Nice", country: "France", flag: "🇫🇷", population: "341K" },
-  { name: "Nantes", country: "France", flag: "🇫🇷", population: "309K" },
-  { name: "Strasbourg", country: "France", flag: "🇫🇷", population: "280K" },
-  { name: "Bordeaux", country: "France", flag: "🇫🇷", population: "254K" },
-  { name: "London", country: "United Kingdom", flag: "🇬🇧", population: "9M" },
-  { name: "New York", country: "United States", flag: "🇺🇸", population: "8.3M" },
-  { name: "Barcelona", country: "Spain", flag: "🇪🇸", population: "1.6M" },
-  { name: "Berlin", country: "Germany", flag: "🇩🇪", population: "3.7M" },
+// Popular tourist cities for quick selection
+const popularCities: City[] = [
+  { name: "Paris", country: "France", flag: "🇫🇷", lat: 48.8566, lng: 2.3522 },
+  { name: "London", country: "United Kingdom", flag: "🇬🇧", lat: 51.5074, lng: -0.1278 },
+  { name: "New York", country: "United States", flag: "🇺🇸", lat: 40.7128, lng: -74.0060 },
+  { name: "Tokyo", country: "Japan", flag: "🇯🇵", lat: 35.6762, lng: 139.6503 },
+  { name: "Barcelona", country: "Spain", flag: "🇪🇸", lat: 41.3851, lng: 2.1734 },
+  { name: "Rome", country: "Italy", flag: "🇮🇹", lat: 41.9028, lng: 12.4964 },
+  { name: "Berlin", country: "Germany", flag: "🇩🇪", lat: 52.5200, lng: 13.4050 },
+  { name: "Amsterdam", country: "Netherlands", flag: "🇳🇱", lat: 52.3676, lng: 4.9041 },
+  { name: "Lisbon", country: "Portugal", flag: "🇵🇹", lat: 38.7223, lng: -9.1393 },
+  { name: "Prague", country: "Czech Republic", flag: "🇨🇿", lat: 50.0755, lng: 14.4378 },
 ];
 
 export default function SelectCity() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDetecting, setIsDetecting] = useState(false);
-  const [filteredCities, setFilteredCities] = useState<City[]>(POPULAR_CITIES);
+  const [searchResults, setSearchResults] = useState<City[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Filter cities based on search query
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredCities(POPULAR_CITIES);
-      return;
-    }
+  // Filter popular cities based on search
+  const filteredCities = searchQuery
+    ? popularCities.filter(
+        (city) =>
+          city.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          city.country.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : popularCities;
 
-    const query = searchQuery.toLowerCase();
-    const filtered = POPULAR_CITIES.filter(
-      (city) =>
-        city.name.toLowerCase().includes(query) ||
-        city.country.toLowerCase().includes(query)
-    );
-    setFilteredCities(filtered);
-  }, [searchQuery]);
+  // Handle city selection
+  const handleCitySelect = (city: City) => {
+    toast.success(\`\${city.flag} \${city.name} sélectionnée\`, {
+      description: \`Vous allez explorer \${city.name}\`,
+    });
+    // Navigate to map with city parameter
+    navigate(\`/map?city=\${encodeURIComponent(city.name)}&lat=\${city.lat}&lng=\${city.lng}\`);
+  };
 
-  // Detect user's current location
+  // Detect current location
   const handleDetectLocation = async () => {
     setIsDetecting(true);
-
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -64,72 +66,133 @@ export default function SelectCity() {
       });
 
       // Reverse geocode to get city name
-      const { latitude, longitude } = position.coords;
-
-      // Use Nominatim API for reverse geocoding
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+        \`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${position.coords.latitude}&lon=\${position.coords.longitude}\`,
+        {
+          headers: {
+            'User-Agent': 'StreetExplorer/1.0',
+          },
+        }
       );
       const data = await response.json();
 
-      const detectedCity =
+      const cityName =
         data.address?.city ||
         data.address?.town ||
         data.address?.village ||
         data.address?.municipality ||
-        "Unknown City";
+        'Unknown City';
 
-      toast.success(`Ville détectée : ${detectedCity}`);
+      toast.success(\`📍 Position détectée\`, {
+        description: \`Vous êtes à \${cityName}\`,
+      });
 
-      // Navigate to map with detected city
-      navigate(`/map?city=${encodeURIComponent(detectedCity)}`);
+      navigate(\`/map?city=\${encodeURIComponent(cityName)}&lat=\${position.coords.latitude}&lng=\${position.coords.longitude}\`);
     } catch (error: any) {
-      console.error("Error detecting location:", error);
-
-      if (error.code === 1) {
-        toast.error("Permission de localisation refusée");
-      } else if (error.code === 2) {
-        toast.error("Position indisponible");
-      } else if (error.code === 3) {
-        toast.error("Délai de localisation dépassé");
-      } else {
-        toast.error("Erreur de détection de la position");
-      }
+      console.error('Location detection error:', error);
+      toast.error('Erreur de localisation', {
+        description: error.message === 'User denied Geolocation'
+          ? 'Veuillez activer la localisation'
+          : 'Impossible de détecter votre position',
+      });
     } finally {
       setIsDetecting(false);
     }
   };
 
-  // Handle city selection
-  const handleSelectCity = (cityName: string) => {
-    navigate(`/map?city=${encodeURIComponent(cityName)}`);
-  };
+  // Search for cities using Nominatim
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
 
-  // Clear search
-  const handleClearSearch = () => {
-    setSearchQuery("");
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        \`https://nominatim.openstreetmap.org/search?format=json&q=\${encodeURIComponent(searchQuery)}&limit=10&addressdetails=1\`,
+        {
+          headers: {
+            'User-Agent': 'StreetExplorer/1.0',
+          },
+        }
+      );
+      const data = await response.json();
+
+      const cities: City[] = data
+        .filter((item: any) => item.type === 'city' || item.type === 'administrative')
+        .map((item: any) => ({
+          name: item.name,
+          country: item.address?.country || '',
+          flag: '🌍',
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+        }));
+
+      setSearchResults(cities);
+      if (cities.length === 0) {
+        toast.info('Aucune ville trouvée', {
+          description: 'Essayez une autre recherche',
+        });
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      toast.error('Erreur de recherche', {
+        description: 'Veuillez réessayer',
+      });
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (
     <AppLayout>
-      <div className="px-6 py-8 animate-fade-in">
+      <div className="px-6 py-8">
         {/* Header */}
-        <header className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-gradient">
-            <MapPin className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Sélectionnez une ville</h1>
+        <header className="mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors mb-4"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-3xl font-bold mb-2">Choisir une ville</h1>
           <p className="text-muted-foreground">
-            Choisissez une ville à explorer ou utilisez votre position actuelle
+            Sélectionnez une ville à explorer ou détectez votre position
           </p>
         </header>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Rechercher une ville..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                className="pl-10 pr-4 h-12 text-base"
+              />
+            </div>
+            <Button
+              onClick={handleSearch}
+              disabled={isSearching || !searchQuery.trim()}
+              className="h-12 px-6"
+            >
+              {isSearching ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                'Rechercher'
+              )}
+            </Button>
+          </div>
+        </div>
 
         {/* Detect Location Button */}
         <Button
           onClick={handleDetectLocation}
           disabled={isDetecting}
-          className="w-full mb-6 rounded-xl h-14 text-base font-semibold bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all"
-          size="lg"
+          variant="outline"
+          className="w-full mb-8 h-14 text-base border-2 border-dashed"
         >
           {isDetecting ? (
             <>
@@ -139,80 +202,58 @@ export default function SelectCity() {
           ) : (
             <>
               <Navigation className="w-5 h-5 mr-2" />
-              Utiliser ma position actuelle
+              Détecter ma position
             </>
           )}
         </Button>
 
-        {/* Search Bar */}
-        <div className="relative mb-8">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Rechercher une ville..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 pr-12 h-14 rounded-xl border-2 text-base transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-          {searchQuery && (
-            <button
-              onClick={handleClearSearch}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-
-        {/* Popular Cities Section */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-bold">
-              {searchQuery ? "Résultats de recherche" : "Villes populaires"}
-            </h2>
-          </div>
-
-          {filteredCities.length === 0 ? (
-            <div className="text-center py-12">
-              <Search className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-              <p className="text-muted-foreground mb-2">Aucune ville trouvée</p>
-              <p className="text-sm text-muted-foreground">
-                Essayez avec un autre nom de ville
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {filteredCities.map((city, index) => (
+        {/* Search Results */}
+        {searchResults.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Résultats de recherche</h2>
+            <div className="grid gap-3">
+              {searchResults.map((city, index) => (
                 <button
-                  key={city.name}
-                  onClick={() => handleSelectCity(city.name)}
-                  className={`bg-card rounded-2xl border border-border p-4 text-left transition-all hover:border-primary hover:shadow-md hover:scale-[1.02] active:scale-[0.98] animate-fade-in stagger-delay-${(index % 9) + 1}`}
-                  style={{ animationFillMode: 'both' }}
+                  key={\`\${city.name}-\${index}\`}
+                  onClick={() => handleCitySelect(city)}
+                  className="bg-card border border-border rounded-xl p-4 hover:bg-muted/50 transition-all text-left card-hover"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="text-4xl">{city.flag}</div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{city.flag}</span>
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg">{city.name}</h3>
                       <p className="text-sm text-muted-foreground">{city.country}</p>
                     </div>
-                    {city.population && (
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-primary">{city.population}</p>
-                        <p className="text-xs text-muted-foreground">habitants</p>
-                      </div>
-                    )}
+                    <MapPin className="w-5 h-5 text-muted-foreground" />
                   </div>
                 </button>
               ))}
             </div>
-          )}
-        </section>
+          </section>
+        )}
 
-        {/* Info Text */}
-        <p className="text-center text-sm text-muted-foreground mt-8">
-          Plus de villes seront ajoutées prochainement !
-        </p>
+        {/* Popular Cities */}
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Villes populaires</h2>
+          <div className="grid gap-3">
+            {filteredCities.map((city) => (
+              <button
+                key={city.name}
+                onClick={() => handleCitySelect(city)}
+                className="bg-card border border-border rounded-xl p-4 hover:bg-muted/50 transition-all text-left card-hover animate-fade-in"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{city.flag}</span>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">{city.name}</h3>
+                    <p className="text-sm text-muted-foreground">{city.country}</p>
+                  </div>
+                  <MapPin className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
       </div>
     </AppLayout>
   );

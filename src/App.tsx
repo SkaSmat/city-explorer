@@ -11,6 +11,9 @@ import Home from "./pages/Home";
 import MapView from "./pages/MapView";
 import Profile from "./pages/Profile";
 import SelectCity from "./pages/SelectCity";
+import Settings from "./pages/Settings";
+import EditProfile from "./pages/EditProfile";
+import Help from "./pages/Help";
 import About from "./pages/About";
 import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
@@ -37,6 +40,9 @@ const App = () => (
             <Route path="/map" element={<MapView />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/select-city" element={<SelectCity />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/edit-profile" element={<EditProfile />} />
+            <Route path="/help" element={<Help />} />
             <Route path="/about" element={<About />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/contact" element={<Contact />} />

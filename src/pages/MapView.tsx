@@ -501,7 +501,9 @@ export default function MapView() {
           disabled={isLoading || isLoadingStreets}
           className={`w-48 h-48 rounded-full text-xl font-bold shadow-2xl transition-all duration-300 ${
             isTracking
-              ? "bg-red-500 hover:bg-red-600 animate-pulse"
+              ? "bg-red-500 hover:bg-red-600"
+              : isLoading || isLoadingStreets
+              ? "bg-indigo-600/70"
               : "bg-indigo-600 hover:bg-indigo-700 animate-pulse-ring"
           }`}
         >

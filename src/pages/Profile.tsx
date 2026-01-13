@@ -271,10 +271,10 @@ export default function Profile() {
         navigate('/settings');
         break;
       case 'privacy':
-        navigate('/settings');
+        navigate('/privacy');
         break;
       case 'help':
-        toast.info("Centre d'aide bientôt disponible");
+        navigate('/help');
         break;
       default:
         break;
@@ -295,7 +295,7 @@ export default function Profile() {
             variant="outline"
             size="sm"
             className="rounded-xl transition-all hover:scale-105"
-            onClick={() => toast.info("🚧 Fonctionnalité en cours de développement")}
+            onClick={() => navigate('/edit-profile')}
           >
             Modifier le profil
           </Button>

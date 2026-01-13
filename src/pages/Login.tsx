@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { stravaService } from "@/services/StravaService";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -52,6 +53,10 @@ export default function Login() {
     if (error) {
       toast.error(error.message);
     }
+  };
+
+  const handleStravaLogin = () => {
+    window.location.href = stravaService.getAuthUrl();
   };
 
   return (
@@ -154,6 +159,17 @@ export default function Login() {
               />
             </svg>
             Continuer avec Google
+          </Button>
+
+          <Button
+            type="button"
+            className="w-full rounded-xl py-6 mt-3 bg-[#FC4C02] hover:bg-[#E34402] text-white"
+            onClick={handleStravaLogin}
+          >
+            <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
+            </svg>
+            Continuer avec Strava
           </Button>
 
           <p className="text-center text-sm text-muted-foreground mt-6">

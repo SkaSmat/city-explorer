@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { MapPin, Route, Building2, Flame, Plus, ChevronRight, Bell, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseAuth as supabase } from "@/lib/supabaseClient";
 import { supabaseGeo } from "@/lib/supabaseGeo";
 import { explorationEvents } from "@/hooks/useExplorationRefresh";
 import { User } from "@supabase/supabase-js";

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useTranslation } from "@/lib/i18n";
 import { stravaService } from "@/services/StravaService";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseAuth as supabase } from "@/lib/supabaseClient";
 import { supabaseGeo } from "@/lib/supabaseGeo";
 import { useEffect, useState } from "react";
 import {

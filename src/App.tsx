@@ -14,6 +14,7 @@ import SelectCity from "./pages/SelectCity";
 import Settings from "./pages/Settings";
 import EditProfile from "./pages/EditProfile";
 import Help from "./pages/Help";
+import GPSDiagnostic from "./pages/GPSDiagnostic";
 import StravaCallback from "./pages/StravaCallback";
 import StravaImport from "./pages/StravaImport";
 import About from "./pages/About";
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/edit-profile" element={<EditProfile />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/gps-diagnostic" element={<GPSDiagnostic />} />
             <Route path="/auth/strava/callback" element={<StravaCallback />} />
             <Route path="/strava-import" element={<StravaImport />} />
             <Route path="/about" element={<About />} />

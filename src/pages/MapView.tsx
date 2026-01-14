@@ -306,13 +306,33 @@ export default function MapView() {
   // Start tracking
   const handleStartTracking = async () => {
     if (!userId) {
-      setError("Vous devez être connecté");
+      toast.error("Vous devez être connecté pour utiliser le GPS");
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
+
+      // Check geolocation permission first
+      if (!navigator.geolocation) {
+        throw new Error("La géolocalisation n'est pas supportée par votre navigateur");
+      }
+
+      // Check permission status if API available
+      if ('permissions' in navigator) {
+        try {
+          const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+          if (permissionStatus.state === 'denied') {
+            throw new Error("Permission GPS refusée. Veuillez l'activer dans les paramètres de votre navigateur.");
+          }
+        } catch (permErr) {
+          // Permissions API might not be available, continue anyway
+          console.warn('Permissions API error:', permErr);
+        }
+      }
+
+      toast.info("📍 Recherche de votre position...", { duration: 2000 });
 
       // Ensure user exists in geo database (fix foreign key error)
       await ensureUserInGeo(userId);
@@ -325,15 +345,17 @@ export default function MapView() {
           maximumAge: 0
         });
       });
-      
+
+      toast.success("✅ Position trouvée! Détection de la ville...", { duration: 1500 });
+
       const currentCity = await detectCity(
         position.coords.latitude,
         position.coords.longitude
       );
-      
+
       setCityName(currentCity);
       setDetectedCity(currentCity);
-      
+
       // Center map on current position
       if (mapRef.current) {
         mapRef.current.flyTo({
@@ -342,14 +364,40 @@ export default function MapView() {
           duration: 1000
         });
       }
-      
+
+      // Show loading for streets
+      setIsLoadingStreets(true);
+      toast.info(`🗺️ Chargement des rues de ${currentCity}...`, { duration: 3000 });
+
       await gpsTracker.startTracking(userId, currentCity);
-      
+
       setIsTracking(true);
       setIsLoading(false);
+      setIsLoadingStreets(false);
+
+      toast.success("🎉 Tracking démarré!", { duration: 2000 });
     } catch (err: any) {
-      setError(err.message);
+      console.error('Start tracking error:', err);
+
+      let errorMessage = err.message || "Erreur inconnue";
+
+      // Handle specific geolocation errors
+      if (err.code === 1) {
+        errorMessage = "Permission GPS refusée. Activez la localisation dans les paramètres.";
+      } else if (err.code === 2) {
+        errorMessage = "Position GPS indisponible. Vérifiez votre connexion.";
+      } else if (err.code === 3) {
+        errorMessage = "Délai GPS dépassé. Vérifiez que le GPS est activé.";
+      }
+
+      setError(errorMessage);
       setIsLoading(false);
+      setIsLoadingStreets(false);
+
+      toast.error("Échec du démarrage", {
+        description: errorMessage,
+        duration: 5000
+      });
     }
   };
 
@@ -435,7 +483,7 @@ export default function MapView() {
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
               <p className="text-sm font-medium mb-2">{error}</p>
-              {error.includes('map data') && (
+              <div className="flex gap-2 mt-3">
                 <Button
                   onClick={() => {
                     setError(null);
@@ -443,11 +491,19 @@ export default function MapView() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="mt-2 border-destructive text-destructive hover:bg-destructive/10"
+                  className="border-destructive text-destructive hover:bg-destructive/10"
                 >
                   Réessayer
                 </Button>
-              )}
+                <Button
+                  onClick={() => navigate("/gps-diagnostic")}
+                  variant="outline"
+                  size="sm"
+                  className="border-destructive/50 text-destructive/80 hover:bg-destructive/5"
+                >
+                  Diagnostic GPS
+                </Button>
+              </div>
             </div>
             <button
               onClick={() => setError(null)}

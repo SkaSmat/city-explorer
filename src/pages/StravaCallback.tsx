@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseAuth as supabase } from '@/lib/supabaseClient';
 import { stravaService } from '@/services/StravaService';
 import { toast } from 'sonner';
 

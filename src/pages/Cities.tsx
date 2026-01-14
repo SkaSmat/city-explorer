@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, ChevronRight, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseAuth as supabase } from "@/lib/supabaseClient";
 import { supabaseGeo } from "@/lib/supabaseGeo";
 import { User } from "@supabase/supabase-js";
 import { SkeletonCityCard } from "@/components/ui/skeleton";

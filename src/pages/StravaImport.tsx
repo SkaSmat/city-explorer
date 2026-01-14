@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseAuth as supabase } from '@/lib/supabaseClient';
 import { stravaService } from '@/services/StravaService';
 import { toast } from 'sonner';
 import {

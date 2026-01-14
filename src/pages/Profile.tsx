@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseAuth as supabase } from "@/lib/supabaseClient";
 import { supabaseGeo } from "@/lib/supabaseGeo";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";

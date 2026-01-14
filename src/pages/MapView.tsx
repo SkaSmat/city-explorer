@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Navigation, Pause, MapPin, Route, Clock, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseAuth as supabase } from "@/lib/supabaseClient";
 import { supabaseGeo } from "@/lib/supabaseGeo";
 import { gpsTracker } from "@/services/GPSTracker";
 import { ensureUserInGeo } from "@/lib/supabaseGeo";

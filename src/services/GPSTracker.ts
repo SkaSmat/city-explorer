@@ -21,8 +21,41 @@ class GPSTracker {
   private watchId: number | null = null;
   private updateInterval: NodeJS.Timeout | null = null;
 
+  // Check if tracking is active
+  isTrackingActive(): boolean {
+    return this.session?.isActive || false;
+  }
+
+  // Force reset session (useful for cleaning up stuck sessions)
+  forceReset(): void {
+    console.log('🔄 Force resetting GPS tracker...');
+
+    // Stop GPS watch
+    if (this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
+
+    // Clear interval
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
+
+    // Clear session
+    this.session = null;
+
+    console.log('✅ GPS tracker reset complete');
+  }
+
   // Démarrer le tracking
   async startTracking(userId: string, city: string): Promise<void> {
+    // Force reset if session exists but shouldn't be active
+    if (this.session && !this.session.isActive) {
+      console.warn('⚠️ Found inactive session, cleaning up...');
+      this.forceReset();
+    }
+
     if (this.session?.isActive) {
       throw new Error('Tracking already in progress');
     }

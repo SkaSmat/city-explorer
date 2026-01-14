@@ -44,6 +44,16 @@ export default function MapView() {
     });
   }, [navigate]);
 
+  // Clean up any stuck GPS sessions on mount
+  useEffect(() => {
+    // Force reset GPS tracker to clean up any stuck sessions
+    if (gpsTracker.isTrackingActive()) {
+      console.warn('⚠️ Found active GPS session on mount, resetting...');
+      gpsTracker.forceReset();
+      toast.info('Session GPS précédente nettoyée');
+    }
+  }, []); // Run once on mount
+
   // Initialize map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -71,6 +81,11 @@ export default function MapView() {
             source: "osm",
             minzoom: 0,
             maxzoom: 19,
+            paint: {
+              "raster-brightness-min": 0.3,  // Darken the map slightly
+              "raster-brightness-max": 0.9,  // Reduce brightness
+              "raster-saturation": -0.3,     // Reduce saturation for less colorful background
+            }
           },
         ],
       },
@@ -184,17 +199,30 @@ export default function MapView() {
               data: trackGeoJSON
             });
 
-            // Add GPS track layer
+            // Add GPS track glow layer (background)
+            map.addLayer({
+              id: 'gps-track-layer-glow',
+              type: 'line',
+              source: 'gps-track',
+              paint: {
+                'line-color': '#3B82F6', // Blue
+                'line-width': 10,
+                'line-opacity': 0.2,
+                'line-blur': 6
+              }
+            });
+
+            // Add GPS track main layer
             map.addLayer({
               id: 'gps-track-layer',
               type: 'line',
               source: 'gps-track',
               paint: {
                 'line-color': '#3B82F6', // Blue
-                'line-width': 4,
-                'line-opacity': 0.7
+                'line-width': 5,
+                'line-opacity': 0.9
               }
-            }, 'streets-layer'); // Add above streets but below marker
+            });
           }
         }
 
@@ -230,7 +258,25 @@ export default function MapView() {
               data: geojson
             });
 
-            // Add layer for streets
+            // Add glow layer for explored streets (background)
+            map.addLayer({
+              id: 'streets-layer-glow',
+              type: 'line',
+              source: 'streets',
+              paint: {
+                'line-color': [
+                  'case',
+                  ['get', 'explored'],
+                  '#FC4C02', // Strava orange for explored
+                  'rgba(0,0,0,0)' // Transparent for unexplored
+                ],
+                'line-width': 8,
+                'line-opacity': 0.3,
+                'line-blur': 4
+              }
+            });
+
+            // Add main layer for streets
             map.addLayer({
               id: 'streets-layer',
               type: 'line',
@@ -239,13 +285,18 @@ export default function MapView() {
                 'line-color': [
                   'case',
                   ['get', 'explored'],
-                  '#22c55e', // Green for explored
-                  '#94a3b8'  // Gray for unexplored
+                  '#FC4C02', // Strava orange for explored
+                  '#E5E7EB'  // Very light gray for unexplored (barely visible)
                 ],
-                'line-width': 3,
-                'line-opacity': 0.8
+                'line-width': 4,
+                'line-opacity': [
+                  'case',
+                  ['get', 'explored'],
+                  0.9,  // Bright for explored
+                  0.3   // Very faint for unexplored
+                ]
               }
-            }, 'osm'); // Add below OSM tiles
+            });
           }
         }
       }
@@ -306,13 +357,33 @@ export default function MapView() {
   // Start tracking
   const handleStartTracking = async () => {
     if (!userId) {
-      setError("Vous devez être connecté");
+      toast.error("Vous devez être connecté pour utiliser le GPS");
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
+
+      // Check geolocation permission first
+      if (!navigator.geolocation) {
+        throw new Error("La géolocalisation n'est pas supportée par votre navigateur");
+      }
+
+      // Check permission status if API available
+      if ('permissions' in navigator) {
+        try {
+          const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+          if (permissionStatus.state === 'denied') {
+            throw new Error("Permission GPS refusée. Veuillez l'activer dans les paramètres de votre navigateur.");
+          }
+        } catch (permErr) {
+          // Permissions API might not be available, continue anyway
+          console.warn('Permissions API error:', permErr);
+        }
+      }
+
+      toast.info("📍 Recherche de votre position...", { duration: 2000 });
 
       // Ensure user exists in geo database (fix foreign key error)
       await ensureUserInGeo(userId);
@@ -325,15 +396,17 @@ export default function MapView() {
           maximumAge: 0
         });
       });
-      
+
+      toast.success("✅ Position trouvée! Détection de la ville...", { duration: 1500 });
+
       const currentCity = await detectCity(
         position.coords.latitude,
         position.coords.longitude
       );
-      
+
       setCityName(currentCity);
       setDetectedCity(currentCity);
-      
+
       // Center map on current position
       if (mapRef.current) {
         mapRef.current.flyTo({
@@ -342,14 +415,40 @@ export default function MapView() {
           duration: 1000
         });
       }
-      
+
+      // Show loading for streets
+      setIsLoadingStreets(true);
+      toast.info(`🗺️ Chargement des rues de ${currentCity}...`, { duration: 3000 });
+
       await gpsTracker.startTracking(userId, currentCity);
-      
+
       setIsTracking(true);
       setIsLoading(false);
+      setIsLoadingStreets(false);
+
+      toast.success("🎉 Tracking démarré!", { duration: 2000 });
     } catch (err: any) {
-      setError(err.message);
+      console.error('Start tracking error:', err);
+
+      let errorMessage = err.message || "Erreur inconnue";
+
+      // Handle specific geolocation errors
+      if (err.code === 1) {
+        errorMessage = "Permission GPS refusée. Activez la localisation dans les paramètres.";
+      } else if (err.code === 2) {
+        errorMessage = "Position GPS indisponible. Vérifiez votre connexion.";
+      } else if (err.code === 3) {
+        errorMessage = "Délai GPS dépassé. Vérifiez que le GPS est activé.";
+      }
+
+      setError(errorMessage);
       setIsLoading(false);
+      setIsLoadingStreets(false);
+
+      toast.error("Échec du démarrage", {
+        description: errorMessage,
+        duration: 5000
+      });
     }
   };
 
@@ -435,7 +534,7 @@ export default function MapView() {
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
               <p className="text-sm font-medium mb-2">{error}</p>
-              {error.includes('map data') && (
+              <div className="flex gap-2 mt-3">
                 <Button
                   onClick={() => {
                     setError(null);
@@ -443,11 +542,19 @@ export default function MapView() {
                   }}
                   variant="outline"
                   size="sm"
-                  className="mt-2 border-destructive text-destructive hover:bg-destructive/10"
+                  className="border-destructive text-destructive hover:bg-destructive/10"
                 >
                   Réessayer
                 </Button>
-              )}
+                <Button
+                  onClick={() => navigate("/gps-diagnostic")}
+                  variant="outline"
+                  size="sm"
+                  className="border-destructive/50 text-destructive/80 hover:bg-destructive/5"
+                >
+                  Diagnostic GPS
+                </Button>
+              </div>
             </div>
             <button
               onClick={() => setError(null)}

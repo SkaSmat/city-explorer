@@ -21,14 +21,18 @@ Le code l'appelle mais elle n'est pas là → Erreur silencieuse → Rien ne se 
 
 ### Étape 2: Exécuter le SQL de Migration
 
+**IMPORTANT:** Utilisez le fichier `002_alter_existing_schema.sql` (pas le 001!)
+
 1. Copiez **TOUT** le contenu du fichier:
    ```
-   supabase/migrations/001_create_base_schema.sql
+   supabase/migrations/002_alter_existing_schema.sql
    ```
 
 2. Collez-le dans l'éditeur SQL
 
 3. Cliquez sur **RUN** en bas à droite
+
+**Note:** Ce fichier est safe - il ajoute seulement les colonnes/fonctions manquantes sans supprimer vos données existantes!
 
 ### Étape 3: Vérifier le Succès
 

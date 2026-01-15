@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { SkeletonStat, SkeletonBadge } from "@/components/ui/skeleton";
@@ -100,7 +99,7 @@ export default function Profile() {
         setLoadingData(true);
 
         // Fetch user profile stats
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await (supabase as any)
           .from('user_profiles')
           .select('total_distance_meters, total_streets_explored, created_at')
           .eq('id', user.id)
@@ -113,7 +112,7 @@ export default function Profile() {
         }
 
         // Fetch city count
-        const { data: cities, error: citiesError } = await supabase
+        const { data: cities, error: citiesError } = await (supabase as any)
           .from('city_progress')
           .select('city')
           .eq('user_id', user.id);
@@ -123,7 +122,7 @@ export default function Profile() {
         }
 
         // Calculate streak
-        const { data: tracks, error: tracksError } = await supabase
+        const { data: tracks, error: tracksError } = await (supabase as any)
           .from('gps_tracks')
           .select('started_at')
           .eq('user_id', user.id)
@@ -135,14 +134,14 @@ export default function Profile() {
           today.setHours(0, 0, 0, 0);
 
           const uniqueDays = new Set(
-            tracks.map(t => new Date(t.started_at).toISOString().split('T')[0])
+            tracks.map((t: any) => new Date(t.started_at).toISOString().split('T')[0])
           );
 
           const sortedDays = Array.from(uniqueDays).sort().reverse();
 
           let currentDate = new Date(today);
           for (const day of sortedDays) {
-            const trackDate = new Date(day);
+            const trackDate = new Date(day as string);
             const diffDays = Math.floor((currentDate.getTime() - trackDate.getTime()) / (1000 * 60 * 60 * 24));
 
             if (diffDays === streak || diffDays === streak + 1) {
@@ -154,7 +153,7 @@ export default function Profile() {
         }
 
         // Fetch badges
-        const { data: allBadges, error: badgesError } = await supabase
+        const { data: allBadges, error: badgesError } = await (supabase as any)
           .from('badges')
           .select('*');
 
@@ -163,7 +162,7 @@ export default function Profile() {
         }
 
         // Fetch unlocked badges
-        const { data: unlockedBadges, error: unlockedError } = await supabase
+        const { data: unlockedBadges, error: unlockedError } = await (supabase as any)
           .from('user_badges')
           .select('badge_id, unlocked_at')
           .eq('user_id', user.id);

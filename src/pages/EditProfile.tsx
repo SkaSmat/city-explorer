@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { supabase } from "@/lib/supabase";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
@@ -32,7 +31,7 @@ export default function EditProfile() {
       setUsername(session.user.user_metadata?.username || session.user.email?.split("@")[0] || "");
       
       // Load profile from external DB
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
         .from('user_profiles')
         .select('bio, avatar_url')
         .eq('id', session.user.id)
@@ -83,7 +82,7 @@ export default function EditProfile() {
       }
 
       // Update profile in external DB
-      const { error: profileError } = await supabase
+      const { error: profileError } = await (supabase as any)
         .from('user_profiles')
         .upsert({
           id: user.id,

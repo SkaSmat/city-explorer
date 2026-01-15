@@ -83,7 +83,7 @@ class StravaService {
    */
   async saveConnection(userId: string, accessToken: string, refreshToken: string, athlete: StravaAthlete): Promise<void> {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('strava_connections')
         .upsert({
           user_id: userId,
@@ -173,7 +173,7 @@ class StravaService {
         onProgress?.(i + 1, activities.length);
 
         // Check if already imported
-        const { data: existing } = await supabase
+        const { data: existing } = await (supabase as any)
           .from('gps_tracks')
           .select('id')
           .eq('strava_activity_id', activities[i].id)
@@ -254,7 +254,7 @@ class StravaService {
       const geometry = `SRID=4326;LINESTRING(${coordsWKT})`;
 
       // Save track to database
-      const { data: track, error: trackError } = await supabase
+      const { data: track, error: trackError } = await (supabase as any)
         .from('gps_tracks')
         .insert({
           user_id: userId,
@@ -274,8 +274,8 @@ class StravaService {
       if (trackError) throw trackError;
 
       // Save explored streets
-      if (exploredStreetIds.length > 0) {
-        const { error } = await supabase.rpc('calculate_explored_streets_v2', {
+      if (exploredStreetIds.length > 0 && track) {
+        const { error } = await (supabase as any).rpc('calculate_explored_streets_v2', {
           p_track_id: track.id,
           p_user_id: userId,
           p_explored_osm_ids: Array.from(exploredStreetIds),
@@ -325,7 +325,7 @@ class StravaService {
    */
   async disconnect(userId: string): Promise<void> {
     try {
-      const { error} = await supabase
+      const { error} = await (supabase as any)
         .from('strava_connections')
         .delete()
         .eq('user_id', userId);

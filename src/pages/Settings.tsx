@@ -8,8 +8,7 @@ import { toast } from "sonner";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useTranslation } from "@/lib/i18n";
 import { stravaService } from "@/services/StravaService";
-import { supabaseAuth as supabase } from "@/lib/supabaseClient";
-import { supabaseGeo } from "@/lib/supabaseGeo";
+import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import {
   Select,
@@ -49,7 +48,7 @@ export default function Settings() {
         return;
       }
 
-      const { data } = await supabaseGeo
+      const { data } = await (supabase as any)
         .from('strava_connections')
         .select('id')
         .eq('user_id', session.user.id)

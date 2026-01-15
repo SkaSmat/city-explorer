@@ -43,7 +43,7 @@ class BadgeChecker {
       console.log('📊 User stats:', stats);
 
       // 2. Fetch all badges
-      const { data: allBadges, error: badgesError } = await supabase
+      const { data: allBadges, error: badgesError } = await (supabase as any)
         .from('badges')
         .select('*');
 
@@ -53,7 +53,7 @@ class BadgeChecker {
       }
 
       // 3. Fetch already unlocked badges
-      const { data: unlockedBadges, error: unlockedError } = await supabase
+      const { data: unlockedBadges, error: unlockedError } = await (supabase as any)
         .from('user_badges')
         .select('badge_id')
         .eq('user_id', userId);
@@ -85,7 +85,7 @@ class BadgeChecker {
           console.log(`✨ Badge unlocked: ${badge.name}`);
 
           // Insert into user_badges
-          const { error: insertError } = await supabase
+          const { error: insertError } = await (supabase as any)
             .from('user_badges')
             .insert({
               user_id: userId,
@@ -125,7 +125,7 @@ class BadgeChecker {
   private async getUserStats(userId: string): Promise<UserStats | null> {
     try {
       // Fetch user profile
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await (supabase as any)
         .from('user_profiles')
         .select('total_distance_meters, total_streets_explored')
         .eq('id', userId)
@@ -137,7 +137,7 @@ class BadgeChecker {
       }
 
       // Fetch city count
-      const { data: cities, error: citiesError } = await supabase
+      const { data: cities, error: citiesError } = await (supabase as any)
         .from('city_progress')
         .select('city')
         .eq('user_id', userId);

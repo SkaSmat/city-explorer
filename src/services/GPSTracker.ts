@@ -329,7 +329,7 @@ class GPSTracker {
       const geometry = `SRID=4326;LINESTRING(${coordsWKT})`;
 
       // Insérer le track
-      const { data: track, error: trackError } = await supabase
+      const { data: track, error: trackError } = await (supabase as any)
         .from('gps_tracks')
         .insert({
           user_id: this.session.userId,
@@ -350,8 +350,8 @@ class GPSTracker {
       // Appeler la fonction pour calculer les rues explorées
       const exploredIds = Array.from(this.session.exploredStreetIds);
       
-      if (exploredIds.length > 0) {
-        const { data, error } = await supabase.rpc('calculate_explored_streets_v2', {
+      if (exploredIds.length > 0 && track) {
+        const { data, error } = await (supabase as any).rpc('calculate_explored_streets_v2', {
           p_track_id: track.id,
           p_user_id: this.session.userId,
           p_explored_osm_ids: exploredIds,

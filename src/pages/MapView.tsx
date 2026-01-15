@@ -112,7 +112,7 @@ export default function MapView() {
 
     try {
       // Get user's explored streets
-      const { data: exploredData, error } = await supabase
+      const { data: exploredData, error } = await (supabase as any)
         .from('explored_streets')
         .select('street_osm_id, city')
         .eq('user_id', userId);

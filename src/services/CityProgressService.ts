@@ -92,7 +92,7 @@ class CityProgressService {
     }
 
     // Check database cache
-    const { data: dbCache } = await (supabase as any)
+    const { data: dbCache } = await supabase
       .from('overpass_cache')
       .select('total_streets, cached_at')
       .eq('city', cityName)
@@ -123,7 +123,7 @@ class CityProgressService {
       this.saveCache();
 
       // Save to database cache
-      await (supabase as any)
+      await supabase
         .from('overpass_cache')
         .upsert({
           city: cityName,

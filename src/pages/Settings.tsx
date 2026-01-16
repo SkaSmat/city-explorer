@@ -48,7 +48,7 @@ export default function Settings() {
         return;
       }
 
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('strava_connections')
         .select('id')
         .eq('user_id', session.user.id)

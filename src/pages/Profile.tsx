@@ -99,7 +99,7 @@ export default function Profile() {
         setLoadingData(true);
 
         // Fetch user profile stats
-        const { data: profile, error: profileError } = await (supabase as any)
+        const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('total_distance_meters, total_streets_explored, created_at')
           .eq('id', user.id)
@@ -112,7 +112,7 @@ export default function Profile() {
         }
 
         // Fetch city count
-        const { data: cities, error: citiesError } = await (supabase as any)
+        const { data: cities, error: citiesError } = await supabase
           .from('city_progress')
           .select('city')
           .eq('user_id', user.id);
@@ -122,7 +122,7 @@ export default function Profile() {
         }
 
         // Calculate streak
-        const { data: tracks, error: tracksError } = await (supabase as any)
+        const { data: tracks, error: tracksError } = await supabase
           .from('gps_tracks')
           .select('started_at')
           .eq('user_id', user.id)
@@ -153,7 +153,7 @@ export default function Profile() {
         }
 
         // Fetch badges
-        const { data: allBadges, error: badgesError } = await (supabase as any)
+        const { data: allBadges, error: badgesError } = await supabase
           .from('badges')
           .select('*');
 
@@ -162,7 +162,7 @@ export default function Profile() {
         }
 
         // Fetch unlocked badges
-        const { data: unlockedBadges, error: unlockedError } = await (supabase as any)
+        const { data: unlockedBadges, error: unlockedError } = await supabase
           .from('user_badges')
           .select('badge_id, unlocked_at')
           .eq('user_id', user.id);

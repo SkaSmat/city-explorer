@@ -7,17 +7,17 @@ const features = [
   {
     icon: MapPin,
     title: "Track your walks",
-    description: "GPS tracking automatique pendant vos explorations urbaines",
+    description: "Automatic GPS tracking during your urban explorations",
   },
   {
     icon: Map,
     title: "Collect streets",
-    description: "Visualisez en temps réel les rues que vous découvrez",
+    description: "Visualize in real-time the streets you discover",
   },
   {
     icon: Trophy,
     title: "Unlock badges",
-    description: "Gagnez des achievements en explorant de nouveaux quartiers",
+    description: "Earn achievements by exploring new neighborhoods",
   },
 ];
 
@@ -118,9 +118,9 @@ export default function Landing() {
               <span className="font-semibold text-lg">StreetExplorer</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <button onClick={() => toast.info("Page About bientôt disponible")} className="hover:text-foreground transition-colors">About</button>
-              <button onClick={() => toast.info("Page Privacy bientôt disponible")} className="hover:text-foreground transition-colors">Privacy</button>
-              <button onClick={() => toast.info("Page Contact bientôt disponible")} className="hover:text-foreground transition-colors">Contact</button>
+              <button onClick={() => toast.info("About page coming soon")} className="hover:text-foreground transition-colors">About</button>
+              <button onClick={() => toast.info("Privacy page coming soon")} className="hover:text-foreground transition-colors">Privacy</button>
+              <button onClick={() => toast.info("Contact page coming soon")} className="hover:text-foreground transition-colors">Contact</button>
             </div>
             <div className="flex items-center gap-4">
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Twitter">

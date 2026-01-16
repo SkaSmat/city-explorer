@@ -1,162 +1,50 @@
-// ===========================================================
-// APPLICATION TYPES
-// Types TypeScript pour l'application City Explorer
-// ===========================================================
-// Note: Ces types sont créés manuellement. Pour les régénérer depuis Supabase:
-// npx supabase gen types typescript --project-id anujltoavoafclklucdx > src/integrations/supabase/types.ts
+/**
+ * Database Types
+ * Re-export of Supabase generated types for easier imports
+ *
+ * Usage:
+ * import type { UserProfile, GPSTrack, GPSTrackInsert } from '@/types/database.types'
+ */
 
-// ===========================================================
-// DATABASE TABLES
-// ===========================================================
+import type { Database } from '@/integrations/supabase/types'
 
-export interface UserProfile {
-  id: string
-  username: string
-  full_name: string | null
-  avatar_url: string | null
-  bio: string | null
-  created_at: string
-  updated_at: string
-  public_profile: boolean
-  total_distance_meters: number
-  total_streets_explored: number
-  current_streak: number
-  last_activity_date: string | null
-}
+// Table Row types (for SELECT queries)
+export type UserProfile = Database['public']['Tables']['user_profiles']['Row']
+export type GPSTrack = Database['public']['Tables']['gps_tracks']['Row']
+export type ExploredStreet = Database['public']['Tables']['explored_streets']['Row']
+export type ExploredStreetV2 = Database['public']['Tables']['explored_streets_v2']['Row']
+export type CityProgress = Database['public']['Tables']['city_progress']['Row']
+export type UserBadge = Database['public']['Tables']['user_badges']['Row']
+export type Badge = Database['public']['Tables']['badges']['Row']
+export type StravaConnection = Database['public']['Tables']['strava_connections']['Row']
+export type OverpassCache = Database['public']['Tables']['overpass_cache']['Row']
 
-export interface GPSTrack {
-  id: string
-  user_id: string
-  city: string
-  route_geometry: string // PostGIS LineString WKT format
-  distance_meters: number
-  duration_seconds: number
-  started_at: string
-  ended_at: string
-  created_at: string
-  source: 'gps' | 'strava'
-  strava_activity_id: number | null
-}
+// Insert types (for INSERT operations)
+export type UserProfileInsert = Database['public']['Tables']['user_profiles']['Insert']
+export type GPSTrackInsert = Database['public']['Tables']['gps_tracks']['Insert']
+export type ExploredStreetInsert = Database['public']['Tables']['explored_streets']['Insert']
+export type ExploredStreetV2Insert = Database['public']['Tables']['explored_streets_v2']['Insert']
+export type CityProgressInsert = Database['public']['Tables']['city_progress']['Insert']
+export type UserBadgeInsert = Database['public']['Tables']['user_badges']['Insert']
+export type BadgeInsert = Database['public']['Tables']['badges']['Insert']
+export type StravaConnectionInsert = Database['public']['Tables']['strava_connections']['Insert']
+export type OverpassCacheInsert = Database['public']['Tables']['overpass_cache']['Insert']
 
-export interface ExploredStreet {
-  id: string
-  user_id: string
-  city: string
-  osm_id: number
-  street_name: string | null
-  street_geometry: string | null // PostGIS LineString WKT format
-  first_explored_at: string
-  times_explored: number
-}
+// Update types (for UPDATE operations)
+export type UserProfileUpdate = Database['public']['Tables']['user_profiles']['Update']
+export type GPSTrackUpdate = Database['public']['Tables']['gps_tracks']['Update']
+export type ExploredStreetUpdate = Database['public']['Tables']['explored_streets']['Update']
+export type ExploredStreetV2Update = Database['public']['Tables']['explored_streets_v2']['Update']
+export type CityProgressUpdate = Database['public']['Tables']['city_progress']['Update']
+export type UserBadgeUpdate = Database['public']['Tables']['user_badges']['Update']
+export type BadgeUpdate = Database['public']['Tables']['badges']['Update']
+export type StravaConnectionUpdate = Database['public']['Tables']['strava_connections']['Update']
+export type OverpassCacheUpdate = Database['public']['Tables']['overpass_cache']['Update']
 
-export interface CityProgress {
-  id: string
-  user_id: string
-  city: string
-  streets_explored: number
-  total_distance_meters: number
-  last_activity: string
-}
-
-export interface UserBadge {
-  id: string
-  user_id: string
-  badge_id: string
-  unlocked_at: string
-}
-
-export interface StravaConnection {
-  id: string
-  user_id: string
-  strava_athlete_id: number
-  access_token: string
-  refresh_token: string
-  expires_at: string
-  athlete_data: {
-    id: number
-    username: string
-    firstname: string
-    lastname: string
-    profile: string
-  }
-  connected_at: string
-  athlete_username: string | null
-  athlete_firstname: string | null
-  athlete_lastname: string | null
-  athlete_profile: string | null
-}
-
-// ===========================================================
-// RPC FUNCTION RETURN TYPES
-// ===========================================================
-
-export interface UserStats {
-  total_distance: number
-  total_streets: number
-  total_cities: number
-  current_streak: number
-}
-
-export interface LeaderboardEntry {
-  user_id: string
-  username: string
-  avatar_url: string | null
-  streets_explored: number
-  total_distance_meters: number
-}
-
-// ===========================================================
-// SUPABASE QUERY TYPES
-// ===========================================================
-
-export type UserProfileInsert = Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>
-export type UserProfileUpdate = Partial<UserProfileInsert>
-
-export type GPSTrackInsert = Omit<GPSTrack, 'id' | 'created_at'>
-export type GPSTrackUpdate = Partial<GPSTrackInsert>
-
-export type ExploredStreetInsert = Omit<ExploredStreet, 'id' | 'first_explored_at'>
-export type ExploredStreetUpdate = Partial<ExploredStreetInsert>
-
-export type CityProgressInsert = Omit<CityProgress, 'id'>
-export type CityProgressUpdate = Partial<CityProgressInsert>
-
-export type StravaConnectionInsert = Omit<StravaConnection, 'id' | 'connected_at'>
-export type StravaConnectionUpdate = Partial<StravaConnectionInsert>
-
-// ===========================================================
-// SUPABASE CLIENT HELPER TYPES
-// ===========================================================
-
-// Type-safe Supabase client for specific tables
-export type TypedSupabaseClient = {
-  from(table: 'user_profiles'): any // Will be properly typed below
-  from(table: 'gps_tracks'): any
-  from(table: 'explored_streets'): any
-  from(table: 'city_progress'): any
-  from(table: 'user_badges'): any
-  from(table: 'strava_connections'): any
-  rpc(fn: 'calculate_explored_streets_v2', params: {
-    p_track_id: string
-    p_user_id: string
-    p_explored_osm_ids: number[]
-    p_city: string
-  }): Promise<{ data: number | null; error: any }>
-  rpc(fn: 'get_user_stats', params: {
-    p_user_id: string
-  }): Promise<{ data: UserStats | null; error: any }>
-  rpc(fn: 'get_city_leaderboard', params: {
-    p_city: string
-    p_limit?: number
-  }): Promise<{ data: LeaderboardEntry[] | null; error: any }>
-}
-
-// ===========================================================
-// HOW TO REGENERATE THESE TYPES
-// ===========================================================
-// 1. Make sure you have Supabase CLI installed: npm install -g supabase
-// 2. Login: npx supabase login
-// 3. Generate types:
-//    npx supabase gen types typescript --project-id anujltoavoafclklucdx > src/integrations/supabase/types-generated.ts
-// 4. Review the generated file and merge with these manual types
-// 5. Update imports across the codebase
+// RPC Function types
+export type CalculateExploredStreetsV2Args = Database['public']['Functions']['calculate_explored_streets_v2']['Args']
+export type UpdateStreakArgs = Database['public']['Functions']['update_streak']['Args']
+export type GetUserStatsArgs = Database['public']['Functions']['get_user_stats']['Args']
+export type GetUserStatsReturn = Database['public']['Functions']['get_user_stats']['Returns'][number]
+export type GetCityLeaderboardArgs = Database['public']['Functions']['get_city_leaderboard']['Args']
+export type GetCityLeaderboardReturn = Database['public']['Functions']['get_city_leaderboard']['Returns'][number]

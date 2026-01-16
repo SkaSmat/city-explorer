@@ -53,7 +53,7 @@ export default function Cities() {
       try {
         setLoadingData(true);
 
-        const { data: cityData, error: cityError } = await (supabase as any)
+        const { data: cityData, error: cityError } = await supabase
           .from('city_progress')
           .select('city, streets_explored, total_distance_meters, last_activity')
           .eq('user_id', user.id)

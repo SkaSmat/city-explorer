@@ -7,17 +7,18 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- ============================================================
--- DROP EXISTING FUNCTIONS FIRST (to avoid type conflicts)
+-- DROP TRIGGERS FIRST, THEN FUNCTIONS (to avoid dependency errors)
 -- ============================================================
 
+-- Drop trigger BEFORE dropping functions (because trigger depends on function)
+DROP TRIGGER IF EXISTS trigger_update_stats_on_track_insert ON gps_tracks;
+
+-- Now drop functions
 DROP FUNCTION IF EXISTS calculate_explored_streets_v2(uuid,uuid,bigint[],text);
 DROP FUNCTION IF EXISTS update_user_stats_from_track();
 DROP FUNCTION IF EXISTS update_streak(uuid);
 DROP FUNCTION IF EXISTS get_user_stats(uuid);
 DROP FUNCTION IF EXISTS get_city_leaderboard(text,integer);
-
--- Drop trigger if exists
-DROP TRIGGER IF EXISTS trigger_update_stats_on_track_insert ON gps_tracks;
 
 -- ============================================================
 -- ALTER TABLE: explored_streets

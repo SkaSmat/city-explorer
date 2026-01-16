@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logger } from './Logger';
 import type { UserBadgeInsert, UserProfile, CityProgress } from '@/types/database.types';
 
 interface Badge {
@@ -31,17 +32,17 @@ class BadgeChecker {
    */
   async checkAndUnlockBadges(userId: string): Promise<NewBadge[]> {
     try {
-      console.log('🏆 Checking badges for user:', userId);
+      logger.info('Checking badges for user:', userId);
 
       // 1. Fetch user stats
       const stats = await this.getUserStats(userId);
 
       if (!stats) {
-        console.error('❌ Could not fetch user stats');
+        logger.error('Could not fetch user stats');
         return [];
       }
 
-      console.log('📊 User stats:', stats);
+      logger.debug('User stats:', stats);
 
       // 2. Fetch all badges
       const { data: allBadges, error: badgesError } = await supabase
@@ -49,7 +50,7 @@ class BadgeChecker {
         .select('*');
 
       if (badgesError || !allBadges) {
-        console.error('❌ Error fetching badges:', badgesError);
+        logger.error('Error fetching badges:', badgesError);
         return [];
       }
 
@@ -60,7 +61,7 @@ class BadgeChecker {
         .eq('user_id', userId);
 
       if (unlockedError) {
-        console.error('❌ Error fetching unlocked badges:', unlockedError);
+        logger.error('Error fetching unlocked badges:', unlockedError);
         return [];
       }
 
@@ -68,7 +69,7 @@ class BadgeChecker {
         (unlockedBadges || []).map(ub => ub.badge_id)
       );
 
-      console.log('🔓 Already unlocked:', unlockedBadgeIds.size, 'badges');
+      logger.info('Already unlocked:', unlockedBadgeIds.size, 'badges');
 
       // 4. Check each badge condition
       const newlyUnlocked: NewBadge[] = [];
@@ -83,7 +84,7 @@ class BadgeChecker {
         const isUnlocked = this.checkBadgeCondition(badge, stats);
 
         if (isUnlocked) {
-          console.log(`✨ Badge unlocked: ${badge.name}`);
+          logger.info(`Badge unlocked: ${badge.name}`);
 
           // Insert into user_badges
           const badgeData: UserBadgeInsert = {
@@ -97,7 +98,7 @@ class BadgeChecker {
             .insert(badgeData);
 
           if (insertError) {
-            console.error(`❌ Error unlocking badge ${badge.name}:`, insertError);
+            logger.error(`Error unlocking badge ${badge.name}:`, insertError);
             continue;
           }
 
@@ -110,14 +111,14 @@ class BadgeChecker {
         }
       }
 
-      console.log(`🎉 Unlocked ${newlyUnlocked.length} new badges`);
+      logger.info(`Unlocked ${newlyUnlocked.length} new badges`);
 
       // 5. Show notifications for new badges
       this.showBadgeNotifications(newlyUnlocked);
 
       return newlyUnlocked;
     } catch (err) {
-      console.error('❌ Error checking badges:', err);
+      logger.error('Error checking badges:', err);
       return [];
     }
   }
@@ -135,7 +136,7 @@ class BadgeChecker {
         .single();
 
       if (profileError || !profile) {
-        console.error('Error fetching profile:', profileError);
+        logger.error('Error fetching profile:', profileError);
         return null;
       }
 
@@ -146,7 +147,7 @@ class BadgeChecker {
         .eq('user_id', userId);
 
       if (citiesError) {
-        console.error('Error fetching cities:', citiesError);
+        logger.error('Error fetching cities:', citiesError);
       }
 
       return {
@@ -155,7 +156,7 @@ class BadgeChecker {
         totalCities: cities?.length || 0,
       };
     } catch (err) {
-      console.error('Error fetching user stats:', err);
+      logger.error('Error fetching user stats:', err);
       return null;
     }
   }
@@ -180,7 +181,7 @@ class BadgeChecker {
         return false;
 
       default:
-        console.warn(`Unknown badge condition type: ${badge.condition_type}`);
+        logger.warn(`Unknown badge condition type: ${badge.condition_type}`);
         return false;
     }
   }

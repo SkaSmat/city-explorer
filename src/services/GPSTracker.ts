@@ -3,6 +3,7 @@ import { streetMatcher, type GPSPoint } from './StreetMatcher';
 import { supabase } from '@/integrations/supabase/client';
 import { badgeChecker } from './BadgeChecker';
 import { toast } from 'sonner';
+import { logger } from './Logger';
 import type { GPSTrackInsert, GPSTrack } from '@/types/database.types';
 
 interface TrackingSession {
@@ -29,7 +30,7 @@ class GPSTracker {
 
   // Force reset session (useful for cleaning up stuck sessions)
   forceReset(): void {
-    console.log('🔄 Force resetting GPS tracker...');
+    logger.info('Force resetting GPS tracker...');
 
     // Stop GPS watch
     if (this.watchId !== null) {
@@ -46,14 +47,14 @@ class GPSTracker {
     // Clear session
     this.session = null;
 
-    console.log('✅ GPS tracker reset complete');
+    logger.info('GPS tracker reset complete');
   }
 
   // Démarrer le tracking
   async startTracking(userId: string, city: string): Promise<void> {
     // Force reset if session exists but shouldn't be active
     if (this.session && !this.session.isActive) {
-      console.warn('⚠️ Found inactive session, cleaning up...');
+      logger.warn('Found inactive session, cleaning up...');
       this.forceReset();
     }
 
@@ -61,7 +62,7 @@ class GPSTracker {
       throw new Error('Tracking already in progress');
     }
 
-    console.log('🚀 Starting GPS tracking...');
+    logger.info('Starting GPS tracking...');
 
     // Vérifier la permission géolocalisation
     if (!navigator.geolocation) {
@@ -84,7 +85,7 @@ class GPSTracker {
     // Obtenir la position initiale
     const initialPosition = await this.getCurrentPosition();
     
-    console.log(`📍 Initial position: ${initialPosition.lat}, ${initialPosition.lng}`);
+    logger.info(`Initial position: ${initialPosition.lat}, ${initialPosition.lng}`);
 
     // Charger les rues autour de la position
     try {
@@ -93,9 +94,9 @@ class GPSTracker {
         initialPosition.lng,
         2 // 2km de rayon
       );
-      console.log(`🗺️ Loaded ${this.session.streets.length} streets`);
+      logger.info(`Loaded ${this.session.streets.length} streets`);
     } catch (error) {
-      console.error('Failed to load streets:', error);
+      logger.error('Failed to load streets:', error);
       throw new Error('Failed to load map data. Please check your connection.');
     }
 
@@ -119,7 +120,7 @@ class GPSTracker {
       this.checkBatteryOptimization();
     }, 10000);
 
-    console.log('✅ Tracking started');
+    logger.info('Tracking started');
   }
 
   // Arrêter le tracking
@@ -128,7 +129,7 @@ class GPSTracker {
       throw new Error('No active tracking session');
     }
 
-    console.log('🛑 Stopping GPS tracking...');
+    logger.info('Stopping GPS tracking...');
 
     // Arrêter le watch GPS
     if (this.watchId !== null) {
@@ -162,14 +163,14 @@ class GPSTracker {
       try {
         await badgeChecker.checkAndUnlockBadges(userId);
       } catch (err) {
-        console.error('Error checking badges:', err);
+        logger.error('Error checking badges:', err);
       }
     }, 1000);
 
     // Nettoyer la session
     this.session = null;
 
-    console.log('✅ Tracking stopped:', result);
+    logger.info('Tracking stopped:', result);
     return result;
   }
 
@@ -205,12 +206,12 @@ class GPSTracker {
     };
 
     this.session.gpsPoints.push(point);
-    console.log(`📍 Position updated: ${point.lat}, ${point.lng}`);
+    logger.debug(`Position updated: ${point.lat}, ${point.lng}`);
   }
 
   // Handler position error
   private handlePositionError(error: GeolocationPositionError) {
-    console.error('GPS error:', error.message);
+    logger.error('GPS error:', error.message);
 
     if (error.code === error.PERMISSION_DENIED) {
       toast.error('Permission GPS refusée', {
@@ -249,7 +250,7 @@ class GPSTracker {
 
     exploredIds.forEach(id => this.session!.exploredStreetIds.add(id));
 
-    console.log(`🗺️ ${this.session.exploredStreetIds.size} streets explored so far`);
+    logger.info(`${this.session.exploredStreetIds.size} streets explored so far`);
   }
 
   // Check if battery optimization should be enabled (after 30 minutes)
@@ -260,7 +261,7 @@ class GPSTracker {
     const thirtyMinutes = 30 * 60 * 1000;
 
     if (duration >= thirtyMinutes) {
-      console.log('🔋 Enabling battery optimization (reducing GPS frequency)');
+      logger.info('Enabling battery optimization (reducing GPS frequency)');
       this.session.batteryOptimized = true;
 
       // Stop current watch
@@ -350,7 +351,7 @@ class GPSTracker {
 
       if (trackError) throw trackError;
 
-      console.log('✅ Track saved to database');
+      logger.info('Track saved to database');
 
       // Appeler la fonction pour calculer les rues explorées
       const exploredIds = Array.from(this.session.exploredStreetIds);
@@ -365,11 +366,11 @@ class GPSTracker {
 
         if (error) throw error;
 
-        console.log(`✅ ${data} new streets recorded`);
+        logger.info(`${data} new streets recorded`);
       }
 
     } catch (error) {
-      console.error('Failed to save track:', error);
+      logger.error('Failed to save track:', error);
       throw error;
     }
   }

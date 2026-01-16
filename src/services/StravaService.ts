@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { overpassService } from './OverpassService';
 import { streetMatcher, type GPSPoint } from './StreetMatcher';
 import { toast } from 'sonner';
+import { logger } from './Logger';
 import type { StravaConnectionInsert, GPSTrackInsert, GPSTrack } from '@/types/database.types';
 
 interface StravaActivity {
@@ -101,7 +102,7 @@ class StravaService {
         athlete: data.athlete,
       };
     } catch (error) {
-      console.error('Strava token exchange error:', error);
+      logger.error('Strava token exchange error:', error);
       throw error;
     }
   }
@@ -136,7 +137,7 @@ class StravaService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error saving Strava connection:', error);
+      logger.error('Error saving Strava connection:', error);
       throw error;
     }
   }
@@ -161,7 +162,7 @@ class StravaService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching Strava activities:', error);
+      logger.error('Error fetching Strava activities:', error);
       throw error;
     }
   }
@@ -186,7 +187,7 @@ class StravaService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching activity stream:', error);
+      logger.error('Error fetching activity stream:', error);
       throw error;
     }
   }
@@ -217,7 +218,7 @@ class StravaService {
           .single();
 
         if (existing) {
-          console.log(`⏭️ Skipping already imported activity ${activities[i].id}`);
+          logger.info(`Skipping already imported activity ${activities[i].id}`);
           skipped++;
           continue;
         }
@@ -226,7 +227,7 @@ class StravaService {
         const stream = await this.getActivityStream(activities[i].id, accessToken);
 
         if (!stream.latlng?.data || stream.latlng.data.length === 0) {
-          console.log(`⏭️ Skipping activity ${activities[i].id} (no GPS data)`);
+          logger.info(`Skipping activity ${activities[i].id} (no GPS data)`);
           skipped++;
           continue;
         }
@@ -237,14 +238,14 @@ class StravaService {
 
         // Rate limit: pause every 50 requests (30 seconds)
         if ((i + 1) % 50 === 0 && i < activities.length - 1) {
-          console.log('⏸️ Rate limit pause (30s)...');
+          logger.info('Rate limit pause (30s)...');
           await new Promise(resolve => setTimeout(resolve, 30000));
         } else {
           // Small delay between requests
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       } catch (error) {
-        console.error(`Error importing activity ${activities[i].id}:`, error);
+        logger.error(`Error importing activity ${activities[i].id}:`, error);
         errors++;
       }
     }
@@ -323,9 +324,9 @@ class StravaService {
         if (error) throw error;
       }
 
-      console.log(`✅ Imported activity: ${activity.name} (${exploredStreetIds.length} streets)`);
+      logger.info(`Imported activity: ${activity.name} (${exploredStreetIds.length} streets)`);
     } catch (error) {
-      console.error('Error processing activity:', error);
+      logger.error('Error processing activity:', error);
       throw error;
     }
   }
@@ -353,7 +354,7 @@ class StravaService {
         'Unknown City'
       );
     } catch (error) {
-      console.error('City detection error:', error);
+      logger.error('City detection error:', error);
       return 'Unknown City';
     }
   }
@@ -372,7 +373,7 @@ class StravaService {
 
       toast.success('Compte Strava déconnecté');
     } catch (error) {
-      console.error('Error disconnecting Strava:', error);
+      logger.error('Error disconnecting Strava:', error);
       toast.error('Erreur lors de la déconnexion');
       throw error;
     }

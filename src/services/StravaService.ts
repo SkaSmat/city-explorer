@@ -84,7 +84,7 @@ class StravaService {
 
       // Edge Function returns athlete data but saves tokens securely in DB
       // We need to fetch the connection to get tokens for API calls
-      const { data: connection, error: connError } = await supabase
+      const { data: connection, error: connError } = await (supabase as any)
         .from('strava_connections')
         .select('access_token, refresh_token')
         .eq('user_id', session.user.id)
@@ -95,8 +95,8 @@ class StravaService {
       }
 
       return {
-        access_token: connection.access_token,
-        refresh_token: connection.refresh_token,
+        access_token: connection.access_token as string,
+        refresh_token: connection.refresh_token as string,
         athlete: data.athlete,
       };
     } catch (error) {

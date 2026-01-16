@@ -210,7 +210,7 @@ class StravaService {
         onProgress?.(i + 1, activities.length);
 
         // Check if already imported
-        const { data: existing } = await (supabase as any)
+        const { data: existing } = await supabase
           .from('gps_tracks')
           .select('id')
           .eq('strava_activity_id', activities[i].id)
@@ -291,20 +291,21 @@ class StravaService {
       const geometry = `SRID=4326;LINESTRING(${coordsWKT})`;
 
       // Save track to database
-      const { data: track, error: trackError } = await (supabase as any)
+      const trackData: GPSTrackInsert = {
+        user_id: userId,
+        city,
+        route_geometry: geometry,
+        distance_meters: Math.round(activity.distance),
+        duration_seconds: activity.moving_time,
+        started_at: activity.start_date,
+        ended_at: new Date(new Date(activity.start_date).getTime() + activity.moving_time * 1000).toISOString(),
+        strava_activity_id: activity.id,
+        source: 'strava',
+      };
+
+      const { data: track, error: trackError } = await supabase
         .from('gps_tracks')
-        .insert({
-          user_id: userId,
-          city,
-          route_geometry: geometry,
-          distance_meters: Math.round(activity.distance),
-          duration_seconds: activity.moving_time,
-          started_at: activity.start_date,
-          ended_at: new Date(new Date(activity.start_date).getTime() + activity.moving_time * 1000).toISOString(),
-          strava_activity_id: activity.id,
-          strava_activity_name: activity.name,
-          source: 'strava',
-        })
+        .insert(trackData)
         .select()
         .single();
 
@@ -312,7 +313,7 @@ class StravaService {
 
       // Save explored streets
       if (exploredStreetIds.length > 0 && track) {
-        const { error } = await (supabase as any).rpc('calculate_explored_streets_v2', {
+        const { error } = await supabase.rpc('calculate_explored_streets_v2', {
           p_track_id: track.id,
           p_user_id: userId,
           p_explored_osm_ids: Array.from(exploredStreetIds),
@@ -362,7 +363,7 @@ class StravaService {
    */
   async disconnect(userId: string): Promise<void> {
     try {
-      const { error} = await (supabase as any)
+      const { error } = await supabase
         .from('strava_connections')
         .delete()
         .eq('user_id', userId);

@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { badgeChecker } from './BadgeChecker';
 import { toast } from 'sonner';
 import { logger } from './Logger';
-import type { GPSTrackInsert, GPSTrack } from '@/types/database.types';
+// Types are managed externally - using 'as any' for Supabase queries
 
 interface TrackingSession {
   sessionId: string;
@@ -342,7 +342,7 @@ class GPSTracker {
       const geometry = `SRID=4326;LINESTRING(${coordsWKT})`;
 
       // Insérer le track
-      const trackData: GPSTrackInsert = {
+      const trackData = {
         user_id: this.session.userId,
         city: this.session.city,
         route_geometry: geometry,
@@ -354,7 +354,7 @@ class GPSTracker {
         strava_activity_id: null,
       };
 
-      const { data: track, error: trackError } = await supabase
+      const { data: track, error: trackError } = await (supabase as any)
         .from('gps_tracks')
         .insert(trackData)
         .select()
@@ -368,8 +368,8 @@ class GPSTracker {
       const exploredIds = Array.from(this.session.exploredStreetIds);
 
       if (exploredIds.length > 0 && track) {
-        const { data, error } = await supabase.rpc('calculate_explored_streets_v2', {
-          p_track_id: track.id,
+        const { data, error } = await (supabase as any).rpc('calculate_explored_streets_v2', {
+          p_track_id: (track as any).id,
           p_user_id: this.session.userId,
           p_explored_osm_ids: exploredIds,
           p_city: this.session.city,

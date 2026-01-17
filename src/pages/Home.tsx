@@ -1,15 +1,17 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { MapPin, Route, Building2, Flame, Plus, ChevronRight, Bell, Trophy } from "lucide-react";
+import { MapPin, Plus, ChevronRight, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { explorationEvents } from "@/hooks/useExplorationRefresh";
 import { User } from "@supabase/supabase-js";
-import { SkeletonStat, SkeletonCityCard } from "@/components/ui/skeleton";
+import { SkeletonCityCard } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n";
 import { cityProgressService } from "@/services/CityProgressService";
+import { StatsDashboard } from "@/components/dashboard/StatsDashboard";
+import { BadgeShowcase } from "@/components/badges/BadgeShowcase";
 
 interface UserStats {
   totalDistance: number;
@@ -26,6 +28,17 @@ interface CityProgress {
   progressPercent: number;
 }
 
+interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  unlockedAt: string | null;
+  progress?: number;
+  requirement?: string;
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const { t, lang } = useTranslation();
@@ -38,6 +51,7 @@ export default function Home() {
     currentStreak: 0,
   });
   const [cities, setCities] = useState<CityProgress[]>([]);
+  const [badges, setBadges] = useState<Badge[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -71,7 +85,7 @@ export default function Home() {
     return unsubscribe;
   }, []);
 
-  // Load user stats and cities
+  // Load user stats, cities, and badges
   useEffect(() => {
     if (!user) return;
 
@@ -80,18 +94,18 @@ export default function Home() {
         setLoadingData(true);
 
         // Fetch user profile stats
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await (supabase as any)
           .from('user_profiles')
           .select('total_distance_meters, total_streets_explored, created_at')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         if (profileError) {
           console.error('Error loading profile:', profileError);
         }
 
         // Fetch city progress
-        const { data: cityData, error: cityError } = await supabase
+        const { data: cityData, error: cityError } = await (supabase as any)
           .from('city_progress')
           .select('city, streets_explored, total_distance_meters, last_activity')
           .eq('user_id', user.id)
@@ -102,7 +116,7 @@ export default function Home() {
         }
 
         // Calculate streak (days with activity)
-        const { data: tracks, error: tracksError } = await supabase
+        const { data: tracks, error: tracksError } = await (supabase as any)
           .from('gps_tracks')
           .select('started_at')
           .eq('user_id', user.id)
@@ -132,6 +146,33 @@ export default function Home() {
           }
         }
 
+        // Fetch badges
+        const { data: allBadges, error: badgesError } = await (supabase as any)
+          .from('badges')
+          .select('*');
+
+        const { data: unlockedBadges, error: unlockedError } = await (supabase as any)
+          .from('user_badges')
+          .select('badge_id, unlocked_at')
+          .eq('user_id', user.id);
+
+        const unlockedMap = new Map(
+          (unlockedBadges || []).map((ub: any) => [ub.badge_id, ub.unlocked_at])
+        );
+
+        const badgesWithStatus: Badge[] = (allBadges || []).map((badge: any) => ({
+          id: badge.id,
+          name: badge.name,
+          description: badge.description || '',
+          icon: badge.icon || '🏆',
+          unlocked: unlockedMap.has(badge.id),
+          unlockedAt: unlockedMap.get(badge.id) || null,
+          requirement: badge.condition_type ? `${badge.condition_value} ${badge.condition_type}` : undefined,
+          progress: 0, // Could calculate based on user stats
+        }));
+
+        setBadges(badgesWithStatus);
+
         // Update stats
         setStats({
           totalDistance: profile?.total_distance_meters || 0,
@@ -141,7 +182,7 @@ export default function Home() {
         });
 
         // Update cities with progress - start with 0, then calculate
-        const citiesWithProgress: CityProgress[] = (cityData || []).map(city => ({
+        const citiesWithProgress: CityProgress[] = (cityData || []).map((city: any) => ({
           city: city.city,
           streetsExplored: city.streets_explored,
           totalDistanceMeters: city.total_distance_meters,
@@ -184,37 +225,16 @@ export default function Home() {
 
   const username = user?.user_metadata?.username || user?.email?.split("@")[0] || "Explorer";
 
-  // Format stats for display
-  const displayStats = [
-    {
-      icon: Route,
-      label: t('home.totalDistance'),
-      value: loadingData ? "..." : `${(stats.totalDistance / 1000).toFixed(1)} km`,
-      color: "text-indigo-600"
-    },
-    {
-      icon: MapPin,
-      label: t('home.streetsExplored'),
-      value: loadingData ? "..." : stats.totalStreets.toLocaleString(),
-      color: "text-emerald-500"
-    },
-    {
-      icon: Building2,
-      label: t('home.citiesVisited'),
-      value: loadingData ? "..." : stats.totalCities.toString(),
-      color: "text-violet-500"
-    },
-    {
-      icon: Flame,
-      label: t('home.currentStreak'),
-      value: loadingData ? "..." : `${stats.currentStreak} ${stats.currentStreak > 1 ? t('home.days') : t('home.day')}`,
-      color: "text-orange-500"
-    },
-  ];
+  const getFlag = (cityName: string) => {
+    if (cityName.toLowerCase().includes('paris') || cityName.toLowerCase().includes('lyon')) return '🇫🇷';
+    if (cityName.toLowerCase().includes('london')) return '🇬🇧';
+    if (cityName.toLowerCase().includes('new york')) return '🇺🇸';
+    return '🌍';
+  };
 
   return (
     <AppLayout>
-      <div className="px-6 py-8">
+      <div className="px-4 sm:px-6 py-6 pb-24 max-w-4xl mx-auto">
         {/* Header */}
         <header className="flex items-center justify-between mb-8 animate-fade-in">
           <div className="flex items-center gap-4">
@@ -232,39 +252,45 @@ export default function Home() {
             onClick={() => toast.info("🔔 Système de notifications bientôt disponible !")}
           >
             <Bell className="w-6 h-6 text-muted-foreground" />
-            {/* Hide notification dot for now - can be enabled later */}
           </button>
         </header>
 
-        {/* Stats Grid */}
+        {/* Stats Dashboard */}
         <section className="mb-10">
-          <div className="grid grid-cols-2 gap-4">
-            {displayStats.map((stat, index) => (
-              <div
-                key={stat.label}
-                className={`bg-card/95 backdrop-blur-sm rounded-2xl border border-border p-4 card-hover animate-fade-in stagger-delay-${index + 1} shadow-sm`}
-                style={{ animationFillMode: 'both' }}
-              >
-                <stat.icon className={`w-6 h-6 ${stat.color} mb-2 transition-transform hover:scale-110`} />
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-              </div>
-            ))}
-          </div>
+          <h2 className="text-lg font-semibold mb-4">{t('home.yourStats') || 'Your Stats'}</h2>
+          <StatsDashboard
+            totalDistance={stats.totalDistance}
+            totalStreets={stats.totalStreets}
+            totalCities={stats.totalCities}
+            currentStreak={stats.currentStreak}
+            loading={loadingData}
+          />
         </section>
+
+        {/* Badge Showcase */}
+        {badges.length > 0 && (
+          <section className="mb-10">
+            <BadgeShowcase
+              badges={badges}
+              loading={loadingData}
+              maxVisible={6}
+              onViewAll={() => navigate('/profile')}
+            />
+          </section>
+        )}
 
         {/* Cities Section */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">{t('home.yourCities')}</h2>
+            <h2 className="text-lg font-semibold">{t('home.yourCities')}</h2>
             {cities.length > 3 && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-primary"
-                onClick={() => toast.info("🌍 Page complète des villes bientôt disponible !")}
+                onClick={() => navigate('/cities')}
               >
-                See all
+                {t('home.seeAll') || 'See all'}
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             )}
@@ -279,7 +305,7 @@ export default function Home() {
           ) : (
             <div className="space-y-4">
               {cities.length === 0 ? (
-                <div className="text-center py-12">
+                <div className="text-center py-12 bg-card rounded-2xl border border-border">
                   <MapPin className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
                   <p className="text-muted-foreground mb-4">
                     {t('home.noCities')}
@@ -287,28 +313,23 @@ export default function Home() {
                   <p className="text-sm text-muted-foreground mb-6">
                     {t('home.startExploring')}
                   </p>
+                  <Button onClick={() => navigate('/map')}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {t('home.addCity')}
+                  </Button>
                 </div>
               ) : (
-                cities.slice(0, 3).map((city, index) => {
-                  // Detect country flag from city name
-                  const getFlag = (cityName: string) => {
-                    // Simple mapping - can be extended
-                    if (cityName.toLowerCase().includes('paris') || cityName.toLowerCase().includes('lyon')) return '🇫🇷';
-                    if (cityName.toLowerCase().includes('london')) return '🇬🇧';
-                    if (cityName.toLowerCase().includes('new york')) return '🇺🇸';
-                    return '🌍';
-                  };
-
-                  return (
+                <>
+                  {cities.slice(0, 3).map((city, index) => (
                     <Link
                       key={city.city}
                       to="/map"
-                      className={`block bg-card rounded-2xl border border-border p-4 card-hover animate-fade-in stagger-delay-${index + 1}`}
-                      style={{ animationFillMode: 'both' }}
+                      className="block bg-card rounded-2xl border border-border p-4 transition-all duration-200 hover:shadow-lg hover:border-primary/30 hover:-translate-y-0.5 animate-fade-in"
+                      style={{ animationDelay: `${index * 100}ms` }}
                     >
                       <div className="flex items-start gap-4">
-                        {/* Mini map placeholder with random pattern based on city name */}
-                        <div className="w-20 h-20 rounded-xl bg-muted flex-shrink-0 overflow-hidden">
+                        {/* Mini map placeholder */}
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 flex-shrink-0 overflow-hidden border border-border">
                           <div className="w-full h-full grid grid-cols-4 gap-0.5 p-2">
                             {Array.from({ length: 16 }).map((_, i) => {
                               const seed = city.city.charCodeAt(i % city.city.length) + i;
@@ -316,8 +337,8 @@ export default function Home() {
                               return (
                                 <div
                                   key={i}
-                                  className={`rounded-sm ${
-                                    isExplored ? "bg-secondary/60" : "bg-muted-foreground/20"
+                                  className={`rounded-sm transition-colors ${
+                                    isExplored ? "bg-primary/60" : "bg-muted-foreground/20"
                                   }`}
                                 />
                               );
@@ -327,50 +348,42 @@ export default function Home() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-lg">{getFlag(city.city)}</span>
-                            <h3 className="font-semibold text-lg">{city.city}</h3>
+                            <h3 className="font-semibold text-base sm:text-lg truncate">{city.city}</h3>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-3">
+                          <p className="text-sm text-muted-foreground mb-2">
                             {city.streetsExplored.toLocaleString()} {t('home.streets')} • {(city.totalDistanceMeters / 1000).toFixed(1)} km
                           </p>
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">{t('home.lastActivity')}</span>
-                              <span className="font-medium text-xs">
-                                {new Date(city.lastActivity).toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'fr-FR', { day: 'numeric', month: 'short' })}
-                              </span>
+                          {city.progressPercent > 0 && (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">{t('home.progress')}</span>
+                                <span className="font-medium text-primary">{city.progressPercent}%</span>
+                              </div>
+                              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
+                                  style={{ width: `${city.progressPercent}%` }}
+                                />
+                              </div>
                             </div>
-                            {city.progressPercent > 0 && (
-                              <>
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-muted-foreground">{t('home.progress')}</span>
-                                  <span className="font-medium text-emerald-500">{city.progressPercent}%</span>
-                                </div>
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500 shadow-sm"
-                                    style={{ width: `${city.progressPercent}%` }}
-                                  />
-                                </div>
-                              </>
-                            )}
-                          </div>
+                          )}
                         </div>
                         <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-2" />
                       </div>
                     </Link>
-                  );
-                })
-              )}
+                  ))}
 
-              {/* Add City Button */}
-              <Button
-                variant="outline"
-                className="w-full rounded-2xl py-6 border-dashed border-2"
-                onClick={() => navigate('/map')}
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                {t('home.addCity')}
-              </Button>
+                  {/* Add City Button */}
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-2xl py-6 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                    onClick={() => navigate('/map')}
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    {t('home.addCity')}
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </section>

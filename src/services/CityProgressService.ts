@@ -92,14 +92,14 @@ class CityProgressService {
     }
 
     // Check database cache
-    const { data: dbCache } = await supabase
+    const { data: dbCache } = await (supabase as any)
       .from('overpass_cache')
       .select('total_streets, cached_at')
       .eq('city', cityName)
-      .single();
+      .maybeSingle();
 
-    if (dbCache && Date.now() - new Date(dbCache.cached_at).getTime() < CACHE_DURATION) {
-      const count = dbCache.total_streets;
+    if (dbCache && Date.now() - new Date((dbCache as any).cached_at).getTime() < CACHE_DURATION) {
+      const count = (dbCache as any).total_streets;
       this.cache.set(cityName, { city: cityName, totalStreets: count, cachedAt: Date.now() });
       this.saveCache();
       console.log(`📦 Using DB cached street count for ${cityName}: ${count}`);
@@ -123,7 +123,7 @@ class CityProgressService {
       this.saveCache();
 
       // Save to database cache
-      await supabase
+      await (supabase as any)
         .from('overpass_cache')
         .upsert({
           city: cityName,

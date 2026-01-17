@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logger } from './Logger';
-import type { UserBadgeInsert, UserProfile, CityProgress } from '@/types/database.types';
 
 interface Badge {
   id: string;
@@ -45,7 +44,7 @@ class BadgeChecker {
       logger.debug('User stats:', stats);
 
       // 2. Fetch all badges
-      const { data: allBadges, error: badgesError } = await supabase
+      const { data: allBadges, error: badgesError } = await (supabase as any)
         .from('badges')
         .select('*');
 
@@ -55,7 +54,7 @@ class BadgeChecker {
       }
 
       // 3. Fetch already unlocked badges
-      const { data: unlockedBadges, error: unlockedError } = await supabase
+      const { data: unlockedBadges, error: unlockedError } = await (supabase as any)
         .from('user_badges')
         .select('badge_id')
         .eq('user_id', userId);
@@ -66,7 +65,7 @@ class BadgeChecker {
       }
 
       const unlockedBadgeIds = new Set(
-        (unlockedBadges || []).map(ub => ub.badge_id)
+        (unlockedBadges || []).map((ub: any) => ub.badge_id)
       );
 
       logger.info('Already unlocked:', unlockedBadgeIds.size, 'badges');
@@ -74,7 +73,7 @@ class BadgeChecker {
       // 4. Check each badge condition
       const newlyUnlocked: NewBadge[] = [];
 
-      for (const badge of allBadges) {
+      for (const badge of allBadges as Badge[]) {
         // Skip if already unlocked
         if (unlockedBadgeIds.has(badge.id)) {
           continue;
@@ -87,13 +86,13 @@ class BadgeChecker {
           logger.info(`Badge unlocked: ${badge.name}`);
 
           // Insert into user_badges
-          const badgeData: UserBadgeInsert = {
+          const badgeData = {
             user_id: userId,
             badge_id: badge.id,
             unlocked_at: new Date().toISOString(),
           };
 
-          const { error: insertError } = await supabase
+          const { error: insertError } = await (supabase as any)
             .from('user_badges')
             .insert(badgeData);
 
@@ -129,11 +128,11 @@ class BadgeChecker {
   private async getUserStats(userId: string): Promise<UserStats | null> {
     try {
       // Fetch user profile
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await (supabase as any)
         .from('user_profiles')
         .select('total_distance_meters, total_streets_explored')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (profileError || !profile) {
         logger.error('Error fetching profile:', profileError);
@@ -141,7 +140,7 @@ class BadgeChecker {
       }
 
       // Fetch city count
-      const { data: cities, error: citiesError } = await supabase
+      const { data: cities, error: citiesError } = await (supabase as any)
         .from('city_progress')
         .select('city')
         .eq('user_id', userId);

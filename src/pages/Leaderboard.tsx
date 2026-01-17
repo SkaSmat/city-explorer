@@ -54,7 +54,7 @@ export default function Leaderboard() {
         setLoadingData(true);
 
         // Fetch all user profiles with their stats
-        const { data: profiles, error } = await supabase
+        const { data: profiles, error } = await (supabase as any)
           .from('user_profiles')
           .select('id, username, total_distance_meters, total_streets_explored')
           .order('total_distance_meters', { ascending: false })
@@ -69,17 +69,17 @@ export default function Leaderboard() {
         // Fetch city counts for each user
         const userCityCounts: { [key: string]: number } = {};
 
-        const { data: cityData } = await supabase
+        const { data: cityData } = await (supabase as any)
           .from('city_progress')
           .select('user_id, city');
 
         if (cityData) {
-          cityData.forEach(entry => {
+          cityData.forEach((entry: any) => {
             userCityCounts[entry.user_id] = (userCityCounts[entry.user_id] || 0) + 1;
           });
         }
 
-        const entries: LeaderboardEntry[] = (profiles || []).map((profile, index) => ({
+        const entries: LeaderboardEntry[] = (profiles || []).map((profile: any, index: number) => ({
           id: profile.id,
           username: profile.username || 'Explorer',
           totalDistance: profile.total_distance_meters || 0,

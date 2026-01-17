@@ -20,6 +20,7 @@ const translations: Translations = {
   
   // Home
   'home.welcomeBack': { fr: 'Bienvenue 👋', en: 'Welcome back 👋', es: 'Bienvenido 👋' },
+  'home.yourStats': { fr: 'Vos statistiques', en: 'Your Stats', es: 'Tus estadísticas' },
   'home.totalDistance': { fr: 'Distance totale', en: 'Total distance', es: 'Distancia total' },
   'home.streetsExplored': { fr: 'Rues explorées', en: 'Streets explored', es: 'Calles exploradas' },
   'home.citiesVisited': { fr: 'Villes visitées', en: 'Cities visited', es: 'Ciudades visitadas' },
@@ -33,6 +34,10 @@ const translations: Translations = {
   'home.progress': { fr: 'Progression', en: 'Progress', es: 'Progreso' },
   'home.day': { fr: 'jour', en: 'day', es: 'día' },
   'home.days': { fr: 'jours', en: 'days', es: 'días' },
+  'home.todaysGoal': { fr: 'Objectif du jour', en: "Today's Goal", es: 'Meta de hoy' },
+  'home.goalComplete': { fr: '🎉 Objectif atteint ! Bravo !', en: '🎉 Goal completed! Amazing work!', es: '🎉 ¡Meta alcanzada! ¡Increíble!' },
+  'home.keepGoing': { fr: '🔥 Continuez ! Il reste', en: '🔥 Keep going!', es: '🔥 ¡Continúa!' },
+  'home.toGo': { fr: 'à parcourir', en: 'to go', es: 'por recorrer' },
   
   // Settings
   'settings.title': { fr: 'Préférences', en: 'Settings', es: 'Preferencias' },

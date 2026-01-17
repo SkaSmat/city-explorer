@@ -12,7 +12,7 @@ import { useTranslation } from "@/lib/i18n";
 import { cityProgressService } from "@/services/CityProgressService";
 import { StatsDashboard } from "@/components/dashboard/StatsDashboard";
 import { BadgeShowcase } from "@/components/badges/BadgeShowcase";
-
+import { DailyGoalCard } from "@/components/dashboard/DailyGoalCard";
 interface UserStats {
   totalDistance: number;
   totalStreets: number;
@@ -50,6 +50,7 @@ export default function Home() {
     totalCities: 0,
     currentStreak: 0,
   });
+  const [todayDistance, setTodayDistance] = useState(0);
   const [cities, setCities] = useState<CityProgress[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -115,17 +116,24 @@ export default function Home() {
           console.error('Error loading cities:', cityError);
         }
 
-        // Calculate streak (days with activity)
+        // Calculate streak (days with activity) and today's distance
         const { data: tracks, error: tracksError } = await (supabase as any)
           .from('gps_tracks')
-          .select('started_at')
+          .select('started_at, total_distance_meters')
           .eq('user_id', user.id)
           .order('started_at', { ascending: false });
 
         let streak = 0;
+        let todayDistanceMeters = 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString().split('T')[0];
+
         if (tracks && tracks.length > 0) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
+          // Calculate today's distance
+          todayDistanceMeters = tracks
+            .filter((t: any) => new Date(t.started_at).toISOString().split('T')[0] === todayStr)
+            .reduce((sum: number, t: any) => sum + (t.total_distance_meters || 0), 0);
 
           const uniqueDays = new Set(
             tracks.map((t: any) => new Date(t.started_at).toISOString().split('T')[0])
@@ -145,6 +153,8 @@ export default function Home() {
             }
           }
         }
+
+        setTodayDistance(todayDistanceMeters / 1000);
 
         // Fetch badges
         const { data: allBadges, error: badgesError } = await (supabase as any)
@@ -255,9 +265,18 @@ export default function Home() {
           </button>
         </header>
 
+        {/* Daily Goal Card */}
+        <section className="mb-6">
+          <DailyGoalCard
+            currentDistance={todayDistance}
+            dailyGoal={5}
+            loading={loadingData}
+          />
+        </section>
+
         {/* Stats Dashboard */}
-        <section className="mb-10">
-          <h2 className="text-lg font-semibold mb-4">{t('home.yourStats') || 'Your Stats'}</h2>
+        <section className="mb-8 sm:mb-10">
+          <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">{t('home.yourStats')}</h2>
           <StatsDashboard
             totalDistance={stats.totalDistance}
             totalStreets={stats.totalStreets}

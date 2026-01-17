@@ -451,30 +451,35 @@ export default function MapView() {
   const handleStopTracking = async () => {
     try {
       setIsLoading(true);
-      
+
       const result = await gpsTracker.stopTracking();
-      
-      setIsTracking(false);
-      setIsLoading(false);
 
       // Trigger refresh for Home page data
       explorationEvents.trigger();
 
       // Show success toast
-      toast.success('🎉 Exploration terminée!', {
-        description: `${Math.round(result.distance)}m parcourus • ${result.newStreets} rues découvertes`,
+      toast.success('🎉 Exploration complete!', {
+        description: `${Math.round(result.distance)}m traveled • ${result.newStreets} streets discovered`,
         duration: 5000,
         action: {
-          label: 'Voir stats',
+          label: 'View stats',
           onClick: () => navigate('/home')
         }
       });
 
       // Reset stats but keep map layers visible
       setTrackingStats({ distance: 0, duration: 0, streetsExplored: 0 });
-      
+
     } catch (err: any) {
-      setError(err.message);
+      console.error('Error stopping tracking:', err);
+      setError(err.message || 'Failed to stop tracking');
+      toast.error('Error stopping tracking', {
+        description: err.message || 'Could not save your activity',
+        duration: 5000
+      });
+    } finally {
+      // ALWAYS reset UI state, even if there was an error
+      setIsTracking(false);
       setIsLoading(false);
     }
   };

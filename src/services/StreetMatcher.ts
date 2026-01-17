@@ -7,7 +7,7 @@ interface GPSPoint {
 }
 
 class StreetMatcher {
-  private readonly matchThreshold = 30; // mètres - distance max pour matcher une rue
+  private readonly matchThreshold = 15; // mètres - distance max pour matcher une rue (réduit de 30m)
 
   // Trouver toutes les rues intersectées par un parcours GPS
   findIntersectingStreets(gpsPoints: GPSPoint[], streets: Street[]): number[] {

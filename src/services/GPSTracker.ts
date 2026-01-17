@@ -92,7 +92,7 @@ class GPSTracker {
       this.session.streets = await overpassService.getStreetsAroundPosition(
         initialPosition.lat,
         initialPosition.lng,
-        2 // 2km de rayon
+        1 // 1km de rayon (réduit de 2km pour plus de précision)
       );
       logger.info(`Loaded ${this.session.streets.length} streets`);
     } catch (error) {
@@ -150,26 +150,36 @@ class GPSTracker {
     const duration = Date.now() - this.session.startTime;
     const newStreets = this.session.exploredStreetIds.size;
 
-    // Sauvegarder dans Supabase
-    await this.saveTrackToDatabase(distance, duration);
-
-    const result = { distance, newStreets, duration };
-
-    // Check and unlock badges (after stats are updated in DB)
+    // Capture userId before clearing session
     const userId = this.session.userId;
 
-    // Small delay to ensure DB updates are committed
-    setTimeout(async () => {
-      try {
-        await badgeChecker.checkAndUnlockBadges(userId);
-      } catch (err) {
-        logger.error('Error checking badges:', err);
-      }
-    }, 1000);
+    // Sauvegarder dans Supabase avec try/finally pour TOUJOURS nettoyer la session
+    try {
+      await this.saveTrackToDatabase(distance, duration);
 
-    // Nettoyer la session
-    this.session = null;
+      // Check and unlock badges (after stats are updated in DB)
+      // Small delay to ensure DB updates are committed
+      setTimeout(async () => {
+        try {
+          await badgeChecker.checkAndUnlockBadges(userId);
+        } catch (err) {
+          logger.error('Error checking badges:', err);
+        }
+      }, 1000);
 
+    } catch (error) {
+      logger.error('Failed to save track:', error);
+      toast.error('Error saving track', {
+        description: 'Could not save your activity. Please check your connection.',
+        duration: 5000
+      });
+      throw error; // Re-throw after showing user-friendly message
+    } finally {
+      // TOUJOURS nettoyer la session, même en cas d'erreur
+      this.session = null;
+    }
+
+    const result = { distance, newStreets, duration };
     logger.info('Tracking stopped:', result);
     return result;
   }
@@ -214,27 +224,28 @@ class GPSTracker {
     logger.error('GPS error:', error.message);
 
     if (error.code === error.PERMISSION_DENIED) {
-      toast.error('Permission GPS refusée', {
-        description: 'Veuillez activer la localisation dans les paramètres de votre navigateur.',
+      toast.error('GPS Permission Denied', {
+        description: 'Please enable location in your browser settings.',
         duration: 5000,
         action: {
-          label: 'Comment faire?',
+          label: 'How?',
           onClick: () => {
-            toast.info('Paramètres de localisation', {
-              description: 'Chrome: Paramètres > Confidentialité > Paramètres des sites > Localisation\nSafari: Paramètres > Confidentialité > Services de localisation',
+            toast.info('Location Settings', {
+              description: 'Chrome: Settings > Privacy > Site Settings > Location\nSafari: Settings > Privacy > Location Services',
               duration: 8000
             });
           }
         }
       });
-      this.stopTracking();
+      // Force stop without saving (async, but don't await to avoid blocking)
+      this.forceReset();
     } else if (error.code === error.TIMEOUT) {
-      toast.warning('Délai dépassé', {
-        description: 'La localisation GPS prend trop de temps. Vérifiez votre connexion GPS.'
+      toast.warning('Timeout', {
+        description: 'GPS is taking too long. Check your GPS connection.'
       });
     } else if (error.code === error.POSITION_UNAVAILABLE) {
-      toast.error('Position indisponible', {
-        description: 'Impossible d\'obtenir votre position. Vérifiez que le GPS est activé.'
+      toast.error('Position Unavailable', {
+        description: 'Cannot get your position. Make sure GPS is enabled.'
       });
     }
   }
